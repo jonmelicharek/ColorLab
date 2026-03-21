@@ -57,16 +57,42 @@ const rotateIn = {
   },
 };
 
-/* ─── Helper: generate a wavy hair strand path ──── */
+/* ─── Helper: generate a smooth, fluid hair strand path ──── */
 function strandPath(startX: number, amplitude: number, wavelength: number, height: number, drift: number = 0): string {
-  const points: string[] = [`M${startX},0`];
-  const steps = 8;
-  for (let i = 1; i <= steps; i++) {
-    const y = (height / steps) * i;
-    const xOff = Math.sin((i / steps) * Math.PI * wavelength) * amplitude + drift * (i / steps);
-    points.push(`Q${startX + xOff + (i % 2 === 0 ? amplitude * 0.3 : -amplitude * 0.3)},${y - height / steps / 2} ${startX + xOff},${y}`);
+  // Use cubic Bezier curves with smooth S commands for continuous, soft curves
+  // S (smooth curveto) automatically mirrors the previous control point = no sharp angles
+  const segments = 12;
+  const segH = height / segments;
+
+  // Pre-calculate smooth x positions using sine waves
+  const xPositions: number[] = [];
+  for (let i = 0; i <= segments; i++) {
+    const t = i / segments;
+    const wave = Math.sin(t * Math.PI * wavelength) * amplitude;
+    const driftOffset = drift * t;
+    xPositions.push(startX + wave + driftOffset);
   }
-  return points.join(' ');
+
+  // Start path
+  let d = `M${xPositions[0].toFixed(1)},0`;
+
+  // First segment uses C (cubic Bezier) to set up the initial control point
+  const cp1x = xPositions[0] + (xPositions[1] - xPositions[0]) * 0.1;
+  const cp1y = segH * 0.33;
+  const cp2x = xPositions[1] - (xPositions[2] - xPositions[0]) * 0.15;
+  const cp2y = segH * 0.67;
+  d += ` C${cp1x.toFixed(1)},${cp1y.toFixed(1)} ${cp2x.toFixed(1)},${cp2y.toFixed(1)} ${xPositions[1].toFixed(1)},${segH.toFixed(1)}`;
+
+  // Remaining segments use S (smooth cubic Bezier) — automatically creates tangent continuity
+  for (let i = 2; i <= segments; i++) {
+    const y = segH * i;
+    // Control point guides the curve smoothly toward the next position
+    const cpx = xPositions[i] - (xPositions[i] - xPositions[i - 1]) * 0.4;
+    const cpy = y - segH * 0.3;
+    d += ` S${cpx.toFixed(1)},${cpy.toFixed(1)} ${xPositions[i].toFixed(1)},${y.toFixed(1)}`;
+  }
+
+  return d;
 }
 
 /* ─── Flowing Hair SVG Component ──────────────────── */
