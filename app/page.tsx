@@ -54,7 +54,8 @@ export default function HomePage() {
           <div className="hidden md:flex items-center gap-8 text-sm text-stone">
             <a href="#how-it-works" className="hover:text-espresso transition-colors">How It Works</a>
             <a href="#features" className="hover:text-espresso transition-colors">Features</a>
-            <a href="#waitlist" className="hover:text-espresso transition-colors">Early Access</a>
+            <Link href="/pricing" className="hover:text-espresso transition-colors">Pricing</Link>
+            <Link href="/affiliates" className="hover:text-espresso transition-colors">Affiliates</Link>
           </div>
           <Link
             href="/upload"

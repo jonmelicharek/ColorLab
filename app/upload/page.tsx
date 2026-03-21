@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { useDropzone } from 'react-dropzone';
 import { motion, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
@@ -8,11 +8,11 @@ import {
   Upload, Camera, Sparkles, ArrowRight, ArrowLeft, FlaskConical,
   Clock, AlertTriangle, Lightbulb, ChevronDown, ChevronUp,
   Palette, Scissors, Droplets, RotateCcw, Download, Share2,
-  CheckCircle2, Loader2
+  CheckCircle2, Loader2, Lock, BookOpen, Crown
 } from 'lucide-react';
 import { cn, fileToBase64, getMediaType, levelToDescription, difficultyColor } from '@/lib/utils';
 
-type Step = 'upload' | 'analyzing' | 'results';
+type Step = 'upload' | 'analyzing' | 'results' | 'paywall';
 
 interface AnalysisResult {
   clientAnalysis: Record<string, any>;
@@ -28,8 +28,29 @@ interface AnalysisResult {
     estimatedTime: string;
     estimatedPrice: string;
   };
+  whyThisWorks?: {
+    colorScience: string;
+    productReasoning: string;
+    alternativeFormulas: string[];
+    commonMistakes: string[];
+    videoLinks: string[];
+  };
   matchedEntries: any[];
   confidence: number;
+}
+
+const FREE_ANALYSIS_LIMIT = 3;
+const STORAGE_KEY = 'colorlab_analyses_used';
+
+function getAnalysesUsed(): number {
+  if (typeof window === 'undefined') return 0;
+  return parseInt(localStorage.getItem(STORAGE_KEY) || '0', 10);
+}
+
+function incrementAnalyses(): number {
+  const current = getAnalysesUsed() + 1;
+  localStorage.setItem(STORAGE_KEY, String(current));
+  return current;
 }
 
 export default function UploadPage() {
@@ -40,9 +61,21 @@ export default function UploadPage() {
   const [inspoPreview, setInspoPreview] = useState<string>('');
   const [result, setResult] = useState<AnalysisResult | null>(null);
   const [error, setError] = useState<string>('');
+  const [analysesUsed, setAnalysesUsed] = useState(0);
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
-    formula: true, technique: true, warnings: false, tips: false,
+    formula: true, technique: true, warnings: false, tips: false, why: false,
   });
+
+  useEffect(() => {
+    setAnalysesUsed(getAnalysesUsed());
+
+    // Check for checkout success
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('checkout') === 'success') {
+      // Clear the URL params
+      window.history.replaceState({}, '', '/upload');
+    }
+  }, []);
 
   const onClientDrop = useCallback((files: File[]) => {
     const file = files[0];
@@ -76,6 +109,13 @@ export default function UploadPage() {
 
   async function handleAnalyze() {
     if (!clientImage || !inspoImage) return;
+
+    // Check free limit
+    if (analysesUsed >= FREE_ANALYSIS_LIMIT) {
+      setStep('paywall');
+      return;
+    }
+
     setStep('analyzing');
     setError('');
 
@@ -96,10 +136,12 @@ export default function UploadPage() {
         }),
       });
 
-      if (!res.ok) throw new Error('Analysis failed — please try again.');
+      if (!res.ok) throw new Error('Analysis failed. Please try again.');
 
       const data = await res.json();
       setResult(data);
+      const newCount = incrementAnalyses();
+      setAnalysesUsed(newCount);
       setStep('results');
     } catch (err: any) {
       setError(err.message || 'Something went wrong.');
@@ -121,6 +163,8 @@ export default function UploadPage() {
     setExpandedSections(prev => ({ ...prev, [key]: !prev[key] }));
   }
 
+  const remainingFree = Math.max(0, FREE_ANALYSIS_LIMIT - analysesUsed);
+
   return (
     <div className="min-h-screen bg-pearl">
       {/* Nav */}
@@ -133,11 +177,24 @@ export default function UploadPage() {
             <span className="font-display text-lg font-semibold tracking-tight">ColorLab</span>
             <span className="text-[9px] font-mono uppercase tracking-widest text-caramel bg-caramel/10 px-1.5 py-0.5 rounded-full">AI</span>
           </Link>
-          {step === 'results' && (
-            <button onClick={handleReset} className="text-sm text-stone hover:text-espresso transition-colors flex items-center gap-1.5">
-              <RotateCcw className="w-3.5 h-3.5" /> New Analysis
-            </button>
-          )}
+          <div className="flex items-center gap-4">
+            {/* Free analyses counter */}
+            {remainingFree > 0 && remainingFree <= FREE_ANALYSIS_LIMIT && (
+              <span className="text-xs text-stone bg-cream px-3 py-1 rounded-full">
+                {remainingFree} free {remainingFree === 1 ? 'analysis' : 'analyses'} left
+              </span>
+            )}
+            {remainingFree === 0 && (
+              <Link href="/pricing" className="text-xs text-caramel bg-caramel/10 px-3 py-1 rounded-full hover:bg-caramel/20 transition-colors flex items-center gap-1">
+                <Crown className="w-3 h-3" /> Upgrade
+              </Link>
+            )}
+            {step === 'results' && (
+              <button onClick={handleReset} className="text-sm text-stone hover:text-espresso transition-colors flex items-center gap-1.5">
+                <RotateCcw className="w-3.5 h-3.5" /> New Analysis
+              </button>
+            )}
+          </div>
         </div>
       </nav>
 
@@ -193,7 +250,7 @@ export default function UploadPage() {
                           <Upload className="w-7 h-7 text-clay" />
                         </div>
                         <p className="text-stone text-sm mb-1">Drop photo here or click to browse</p>
-                        <p className="text-clay text-xs">JPG, PNG, WebP · Max 10MB</p>
+                        <p className="text-clay text-xs">JPG, PNG, WebP - Max 10MB</p>
                       </div>
                     )}
                   </div>
@@ -251,6 +308,62 @@ export default function UploadPage() {
                   <ArrowRight className="w-4 h-4" />
                 </button>
               </div>
+            </motion.div>
+          )}
+
+          {/* ─── PAYWALL STEP ──────────────────────── */}
+          {step === 'paywall' && (
+            <motion.div
+              key="paywall"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              className="flex flex-col items-center justify-center min-h-[60vh] text-center"
+            >
+              <div className="w-20 h-20 rounded-full bg-caramel/10 flex items-center justify-center mb-6">
+                <Lock className="w-9 h-9 text-caramel" />
+              </div>
+              <h2 className="font-display text-3xl md:text-4xl font-medium mb-3">
+                You've Used Your Free Analyses
+              </h2>
+              <p className="text-stone text-lg max-w-md mb-8">
+                You've used all {FREE_ANALYSIS_LIMIT} free analyses. Upgrade to keep generating formulas and unlock premium features.
+              </p>
+
+              <div className="grid sm:grid-cols-2 gap-4 max-w-lg w-full mb-8">
+                <div className="formula-card rounded-xl p-5 text-center">
+                  <div className="font-display text-2xl font-bold text-espresso mb-1">$29</div>
+                  <div className="text-xs text-stone uppercase tracking-wider mb-3">Stylist / month</div>
+                  <ul className="text-xs text-stone space-y-1.5 mb-4 text-left">
+                    <li className="flex items-center gap-1.5"><CheckCircle2 className="w-3 h-3 text-caramel" /> 50 analyses/month</li>
+                    <li className="flex items-center gap-1.5"><CheckCircle2 className="w-3 h-3 text-caramel" /> Full formula breakdown</li>
+                    <li className="flex items-center gap-1.5"><CheckCircle2 className="w-3 h-3 text-caramel" /> Priority processing</li>
+                  </ul>
+                  <Link href="/pricing" className="block w-full bg-espresso text-pearl py-2.5 rounded-full text-sm font-medium hover:bg-ink transition-colors">
+                    Upgrade Now
+                  </Link>
+                </div>
+
+                <div className="formula-card rounded-xl p-5 text-center ring-2 ring-caramel">
+                  <div className="font-display text-2xl font-bold text-espresso mb-1">$79</div>
+                  <div className="text-xs text-stone uppercase tracking-wider mb-3">Salon / month</div>
+                  <ul className="text-xs text-stone space-y-1.5 mb-4 text-left">
+                    <li className="flex items-center gap-1.5"><CheckCircle2 className="w-3 h-3 text-caramel" /> Unlimited analyses</li>
+                    <li className="flex items-center gap-1.5"><CheckCircle2 className="w-3 h-3 text-caramel" /> Up to 5 stylists</li>
+                    <li className="flex items-center gap-1.5"><CheckCircle2 className="w-3 h-3 text-caramel" /> Analytics dashboard</li>
+                  </ul>
+                  <Link href="/pricing" className="block w-full bg-caramel text-white py-2.5 rounded-full text-sm font-medium hover:bg-copper transition-colors">
+                    Best Value
+                  </Link>
+                </div>
+              </div>
+
+              <button
+                onClick={() => setStep('upload')}
+                className="text-sm text-stone hover:text-espresso transition-colors flex items-center gap-1.5"
+              >
+                <ArrowLeft className="w-3.5 h-3.5" /> Back to Upload
+              </button>
             </motion.div>
           )}
 
@@ -319,14 +432,14 @@ export default function UploadPage() {
                 <div className="relative rounded-xl overflow-hidden">
                   {clientPreview && <img src={clientPreview} alt="Client" className="w-full h-48 object-cover" />}
                   <div className="absolute bottom-0 inset-x-0 bg-gradient-to-t from-black/60 to-transparent p-3">
-                    <p className="text-white text-xs font-medium">Current · Level {result.clientAnalysis.level}</p>
+                    <p className="text-white text-xs font-medium">Current - Level {result.clientAnalysis.level}</p>
                     <p className="text-white/70 text-xs">{result.clientAnalysis.currentColor}</p>
                   </div>
                 </div>
                 <div className="relative rounded-xl overflow-hidden">
                   {inspoPreview && <img src={inspoPreview} alt="Inspo" className="w-full h-48 object-cover" />}
                   <div className="absolute bottom-0 inset-x-0 bg-gradient-to-t from-black/60 to-transparent p-3">
-                    <p className="text-white text-xs font-medium">Goal · Level {result.inspoAnalysis.targetLevel}</p>
+                    <p className="text-white text-xs font-medium">Goal - Level {result.inspoAnalysis.targetLevel}</p>
                     <p className="text-white/70 text-xs">{result.inspoAnalysis.colorDescription}</p>
                   </div>
                 </div>
@@ -356,12 +469,12 @@ export default function UploadPage() {
                     <div className="grid sm:grid-cols-2 gap-4">
                       {Object.entries(result.recommendation.formula).map(([key, value]) => {
                         if (!value || key === 'processingTimes' || (Array.isArray(value) && value.length === 0)) return null;
-                        const label = key.replace(/([A-Z])/g, ' $1').replace(/^./, s => s.toUpperCase());
+                        const label = key.replace(/([A-Z])/g, ' $1').replace(/^./, (s: string) => s.toUpperCase());
                         return (
                           <div key={key} className="bg-cream/50 rounded-lg p-3">
                             <p className="text-xs text-stone uppercase tracking-wider mb-1">{label}</p>
                             <p className="text-espresso font-medium text-sm">
-                              {Array.isArray(value) ? value.join(', ') : String(value)}
+                              {Array.isArray(value) ? (value as string[]).join(', ') : String(value)}
                             </p>
                           </div>
                         );
@@ -440,7 +553,7 @@ export default function UploadPage() {
 
               {/* Tips */}
               {result.recommendation.tips?.length > 0 && (
-                <div className="formula-card rounded-2xl overflow-hidden mb-8">
+                <div className="formula-card rounded-2xl overflow-hidden mb-4">
                   <button
                     onClick={() => toggleSection('tips')}
                     className="w-full flex items-center justify-between p-6 hover:bg-cream/50 transition-colors"
@@ -461,6 +574,86 @@ export default function UploadPage() {
                   )}
                 </div>
               )}
+
+              {/* "Why This Works" — Premium Add-on Teaser / Content */}
+              <div className="formula-card rounded-2xl overflow-hidden mb-4 border-2 border-honey/30">
+                <button
+                  onClick={() => toggleSection('why')}
+                  className="w-full flex items-center justify-between p-6 hover:bg-cream/50 transition-colors"
+                >
+                  <h3 className="font-display text-xl font-semibold flex items-center gap-2">
+                    <BookOpen className="w-5 h-5 text-honey" /> Why This Works
+                    {!result.whyThisWorks && (
+                      <span className="text-[10px] font-mono uppercase tracking-widest text-honey bg-honey/10 px-2 py-0.5 rounded-full ml-2">
+                        Premium
+                      </span>
+                    )}
+                  </h3>
+                  {expandedSections.why ? <ChevronUp className="w-5 h-5 text-clay" /> : <ChevronDown className="w-5 h-5 text-clay" />}
+                </button>
+                {expandedSections.why && (
+                  <div className="px-6 pb-6">
+                    {result.whyThisWorks ? (
+                      // Full premium content
+                      <div className="space-y-4">
+                        <div>
+                          <h4 className="text-sm font-semibold text-espresso mb-1">Color Science</h4>
+                          <p className="text-stone text-sm leading-relaxed">{result.whyThisWorks.colorScience}</p>
+                        </div>
+                        <div>
+                          <h4 className="text-sm font-semibold text-espresso mb-1">Why These Products</h4>
+                          <p className="text-stone text-sm leading-relaxed">{result.whyThisWorks.productReasoning}</p>
+                        </div>
+                        {result.whyThisWorks.alternativeFormulas?.length > 0 && (
+                          <div>
+                            <h4 className="text-sm font-semibold text-espresso mb-1">Alternative Formulas</h4>
+                            <ul className="space-y-1.5">
+                              {result.whyThisWorks.alternativeFormulas.map((alt: string, i: number) => (
+                                <li key={i} className="text-stone text-sm bg-cream/50 px-3 py-2 rounded-lg">{alt}</li>
+                              ))}
+                            </ul>
+                          </div>
+                        )}
+                        {result.whyThisWorks.commonMistakes?.length > 0 && (
+                          <div>
+                            <h4 className="text-sm font-semibold text-espresso mb-1">Common Mistakes to Avoid</h4>
+                            <ul className="space-y-1.5">
+                              {result.whyThisWorks.commonMistakes.map((m: string, i: number) => (
+                                <li key={i} className="text-sm text-rose bg-rose/5 px-3 py-2 rounded-lg flex items-start gap-2">
+                                  <AlertTriangle className="w-3.5 h-3.5 mt-0.5 flex-shrink-0" /> {m}
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      // Teaser for non-premium users
+                      <div className="text-center py-4">
+                        <div className="w-14 h-14 rounded-full bg-honey/10 flex items-center justify-center mx-auto mb-4">
+                          <Lock className="w-6 h-6 text-honey" />
+                        </div>
+                        <h4 className="font-display text-lg font-semibold mb-2">Unlock Color Science Education</h4>
+                        <p className="text-stone text-sm max-w-md mx-auto mb-4">
+                          Understand <em>why</em> this formula works, see alternative approaches, and learn common mistakes to avoid. Perfect for growing your color knowledge.
+                        </p>
+                        <ul className="text-xs text-stone space-y-1.5 max-w-xs mx-auto mb-6 text-left">
+                          <li className="flex items-center gap-1.5"><BookOpen className="w-3 h-3 text-honey" /> Detailed color science breakdown</li>
+                          <li className="flex items-center gap-1.5"><BookOpen className="w-3 h-3 text-honey" /> Why each product was chosen</li>
+                          <li className="flex items-center gap-1.5"><BookOpen className="w-3 h-3 text-honey" /> Alternative formula options</li>
+                          <li className="flex items-center gap-1.5"><BookOpen className="w-3 h-3 text-honey" /> Common mistakes to avoid</li>
+                        </ul>
+                        <Link
+                          href="/pricing"
+                          className="inline-flex items-center gap-2 bg-honey text-white px-6 py-2.5 rounded-full text-sm font-medium hover:bg-honey/90 transition-colors"
+                        >
+                          <BookOpen className="w-4 h-4" /> Add for $9.99/mo
+                        </Link>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
 
               {/* Matched DB entries */}
               {result.matchedEntries.length > 0 && (
@@ -488,13 +681,29 @@ export default function UploadPage() {
 
               {/* CTA */}
               <div className="text-center py-8 border-t border-sand">
-                <p className="text-stone text-sm mb-3">Want more analyses? Join ColorLab for free during beta.</p>
-                <Link
-                  href="/#waitlist"
-                  className="inline-flex items-center gap-2 bg-espresso text-pearl px-6 py-3 rounded-full text-sm font-medium hover:bg-ink transition-colors"
-                >
-                  <Sparkles className="w-4 h-4" /> Get Early Access
-                </Link>
+                {remainingFree > 0 ? (
+                  <>
+                    <p className="text-stone text-sm mb-3">
+                      You have {remainingFree} free {remainingFree === 1 ? 'analysis' : 'analyses'} remaining.
+                    </p>
+                    <button
+                      onClick={handleReset}
+                      className="inline-flex items-center gap-2 bg-espresso text-pearl px-6 py-3 rounded-full text-sm font-medium hover:bg-ink transition-colors"
+                    >
+                      <FlaskConical className="w-4 h-4" /> Run Another Analysis
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <p className="text-stone text-sm mb-3">Want more analyses? Upgrade your plan.</p>
+                    <Link
+                      href="/pricing"
+                      className="inline-flex items-center gap-2 bg-caramel text-white px-6 py-3 rounded-full text-sm font-medium hover:bg-copper transition-colors"
+                    >
+                      <Crown className="w-4 h-4" /> View Plans & Pricing
+                    </Link>
+                  </>
+                )}
               </div>
             </motion.div>
           )}

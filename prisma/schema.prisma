@@ -1,8 +1,6 @@
 // ===========================================
 // ColorLab AI — Database Schema
 // ===========================================
-// This schema defines the before/after photo database,
-// user submissions, formula library, and lead gen system.
 
 generator client {
   provider = "prisma-client-js"
@@ -20,46 +18,39 @@ model FormulaEntry {
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
-  // Before photo metadata
   beforeImageUrl  String
-  beforeHairColor String            // e.g. "Level 5 warm brown"
-  beforeHairType  String?           // e.g. "2B wavy, medium porosity"
-  beforeCondition String?           // e.g. "Virgin hair, no prior color"
-  beforeLevel     Int?              // 1-10 natural level
+  beforeHairColor String
+  beforeHairType  String?
+  beforeCondition String?
+  beforeLevel     Int?
 
-  // After photo metadata
   afterImageUrl   String
-  afterHairColor  String            // e.g. "Level 8 cool blonde balayage"
-  afterLevel      Int?              // 1-10 result level
+  afterHairColor  String
+  afterLevel      Int?
 
-  // Color formula
-  technique       String            // e.g. "Balayage", "Full foil", "Shadow root"
-  formulaDetails  String            // Full formula text block
-  
-  // Structured formula fields
-  colorBrand      String?           // e.g. "Redken", "Wella", "Schwarzkopf"
-  colorLine       String?           // e.g. "Shades EQ", "Koleston Perfect"
-  colorShades     String[]          // e.g. ["7NB", "8V", "9P"]
-  developer       String?           // e.g. "20 vol", "30 vol"
-  developerRatio  String?           // e.g. "1:1", "1:2"
-  lightener       String?           // e.g. "Flash Lift", "BlondMe"
-  lightenerMix    String?           // e.g. "30 vol, 1:2 ratio"
-  toner           String?           // e.g. "Shades EQ 9V + 9T equal parts"
-  tonerDeveloper  String?           // e.g. "Processing solution"
-  additives       String[]          // e.g. ["Olaplex No.1", "B3 Brazilian Bond"]
-  processingTime  String?           // e.g. "35 minutes under heat"
+  technique       String
+  formulaDetails  String
 
-  // Categorization tags
-  tags            String[]          // e.g. ["blonde", "balayage", "cool-tone"]
-  difficulty      String?           // "beginner", "intermediate", "advanced"
-  priceRange      String?           // "$", "$$", "$$$", "$$$$"
-  estimatedTime   String?           // e.g. "3-4 hours"
+  colorBrand      String?
+  colorLine       String?
+  colorShades     String[]
+  developer       String?
+  developerRatio  String?
+  lightener       String?
+  lightenerMix    String?
+  toner           String?
+  tonerDeveloper  String?
+  additives       String[]
+  processingTime  String?
 
-  // Matching metadata (used by AI for similarity)
-  colorVector     String?           // JSON array of color values for matching
-  notes           String?           // Stylist notes
+  tags            String[]
+  difficulty      String?
+  priceRange      String?
+  estimatedTime   String?
 
-  // Relations
+  colorVector     String?
+  notes           String?
+
   analyses        Analysis[]
 
   @@index([tags])
@@ -74,19 +65,15 @@ model Submission {
   id              String   @id @default(cuid())
   createdAt       DateTime @default(now())
 
-  // Uploaded images
-  clientImageUrl  String            // Photo of the client's current hair
-  inspoImageUrl   String            // Inspiration/goal photo
+  clientImageUrl  String
+  inspoImageUrl   String
 
-  // AI-detected metadata
-  clientHairInfo  Json?             // { level, tone, condition, porosity, type }
-  inspoHairInfo   Json?             // { level, tone, highlights, technique }
+  clientHairInfo  Json?
+  inspoHairInfo   Json?
 
-  // User info (optional, for logged-in users)
   stylistId       String?
   stylist         Stylist?  @relation(fields: [stylistId], references: [id])
 
-  // Results
   analysis        Analysis?
 
   @@index([stylistId])
@@ -99,32 +86,32 @@ model Analysis {
   submissionId    String   @unique
   submission      Submission @relation(fields: [submissionId], references: [id])
 
-  // AI analysis summary
-  summary         String            // Human-readable summary
-  recommendedFormula String         // Full formula recommendation
-  technique       String            // Recommended technique
-  estimatedTime   String?           // e.g. "2.5-3 hours"
+  summary         String
+  recommendedFormula String
+  technique       String
+  estimatedTime   String?
   difficulty      String?
-  warnings        String[]          // e.g. ["May need pre-lightening session"]
-  tips            String[]          // e.g. ["Use foils for cleaner lift"]
+  warnings        String[]
+  tips            String[]
 
-  // Matched database entries
+  // "Why This Works" premium content
+  whyThisWorks    Json?
+
   matchedEntryId  String?
   matchedEntry    FormulaEntry? @relation(fields: [matchedEntryId], references: [id])
-  matchConfidence Float?            // 0-1 confidence score
-  
-  // Full AI response
+  matchConfidence Float?
+
   rawAiResponse   Json?
 
   @@index([matchedEntryId])
 }
 
-// ─── STYLIST ACCOUNTS ───────────────────────────────────────
+// ─── STYLIST ACCOUNTS & SUBSCRIPTIONS ────────────────────────
 
 model Stylist {
   id              String   @id @default(cuid())
   createdAt       DateTime @default(now())
-  
+
   email           String   @unique
   name            String
   salon           String?
@@ -132,18 +119,32 @@ model Stylist {
   state           String?
   phone           String?
   instagram       String?
-  specialties     String[]          // e.g. ["balayage", "vivid color", "extensions"]
-  
-  // Usage
+  specialties     String[]
+
+  // Subscription
+  stripeCustomerId    String?   @unique
+  stripeSubscriptionId String?  @unique
+  stripePriceId       String?
+  plan                String    @default("free") // free, stylist, salon, enterprise
+  planStatus          String    @default("active") // active, canceled, past_due
+  planExpiresAt       DateTime?
+
+  // "Why This Works" add-on
+  hasWhyAddon         Boolean   @default(false)
+  whyAddonStripeId    String?
+
+  // Usage tracking
   submissions     Submission[]
   analysisCount   Int      @default(0)
-  
+  freeAnalysesUsed Int     @default(0)
+
   // Lead gen tracking
-  source          String?           // e.g. "landing_page", "instagram", "referral"
+  source          String?
   referralCode    String?  @unique
   referredBy      String?
 
   @@index([email])
+  @@index([stripeCustomerId])
 }
 
 // ─── LEAD GEN & WAITLIST ────────────────────────────────────
@@ -158,13 +159,12 @@ model Lead {
   city            String?
   phone           String?
   instagram       String?
-  
-  source          String?           // "waitlist", "free_tool", "webinar", "referral"
+
+  source          String?
   utmSource       String?
   utmMedium       String?
   utmCampaign     String?
 
-  // Engagement
   emailsSent      Int      @default(0)
   lastEmailAt     DateTime?
   converted       Boolean  @default(false)
@@ -172,4 +172,114 @@ model Lead {
 
   @@index([email])
   @@index([source])
+}
+
+// ─── AFFILIATE / BRAND PARTNERS ─────────────────────────────
+
+model Affiliate {
+  id              String   @id @default(cuid())
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  // Company info
+  brandName       String
+  contactName     String
+  contactEmail    String   @unique
+  phone           String?
+  website         String?
+
+  // Products they want featured
+  productLines    String[] // e.g. ["Shades EQ", "Flash Lift"]
+  colorBrands     String[] // e.g. ["Redken"]
+
+  // Tracking
+  affiliateCode   String   @unique
+  commissRate     Float    @default(0.10) // 10% default
+
+  // Status
+  status          String   @default("pending") // pending, approved, active, paused
+  approvedAt      DateTime?
+
+  // Metrics
+  impressions     Int      @default(0) // times products shown in results
+  clicks          Int      @default(0) // clicks on product links
+  conversions     Int      @default(0)
+  totalRevenue    Float    @default(0)
+
+  // Payment
+  payoutEmail     String?
+  totalPaid       Float    @default(0)
+
+  notes           String?
+
+  @@index([affiliateCode])
+  @@index([status])
+}
+
+// ─── CLIENT PORTAL (for salons to buy leads) ────────────────
+
+model SalonAccount {
+  id              String   @id @default(cuid())
+  createdAt       DateTime @default(now())
+
+  salonName       String
+  ownerName       String
+  email           String   @unique
+  phone           String?
+  city            String?
+  state           String?
+  zipCode         String?
+  website         String?
+  instagram       String?
+
+  // Subscription
+  stripeCustomerId    String?   @unique
+  plan                String    @default("basic") // basic, premium
+  creditsRemaining    Int       @default(0) // lead credits
+
+  // Preferences
+  serviceRadius       Int       @default(25) // miles
+  preferredServices   String[]  // e.g. ["balayage", "color correction"]
+
+  // Status
+  verified            Boolean   @default(false)
+  active              Boolean   @default(true)
+
+  // Relations
+  purchasedLeads      SalonLead[]
+
+  @@index([email])
+  @@index([city, state])
+}
+
+model SalonLead {
+  id              String   @id @default(cuid())
+  createdAt       DateTime @default(now())
+
+  // The client looking for service
+  clientName      String?
+  clientEmail     String
+  clientPhone     String?
+  clientCity      String?
+  serviceWanted   String   // e.g. "Balayage - Brown to Blonde"
+  inspoImageUrl   String?
+
+  // Pricing
+  price           Float    @default(5.00) // cost per lead
+
+  // Status
+  status          String   @default("available") // available, sold, contacted, converted
+
+  // Purchasing salon
+  salonId         String?
+  salon           SalonAccount? @relation(fields: [salonId], references: [id])
+  purchasedAt     DateTime?
+  contactedAt     DateTime?
+  convertedAt     DateTime?
+
+  notes           String?
+
+  @@index([status])
+  @@index([clientCity])
+  @@index([salonId])
 }
