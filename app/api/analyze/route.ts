@@ -1,11 +1,22 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { analyzePhotos } from '@/lib/ai-engine';
 import prisma from '@/lib/prisma';
+import { rateLimit } from '@/lib/rate-limit';
 
 export const maxDuration = 60; // Allow up to 60s for AI processing
 
 export async function POST(req: NextRequest) {
   try {
+    // Rate limit by IP: 20 analyses per hour
+    const ip = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown';
+    const ipLimit = rateLimit(`analyze-ip:${ip}`, 20, 60 * 60 * 1000);
+    if (!ipLimit.allowed) {
+      return NextResponse.json(
+        { error: 'Rate limit exceeded. Please wait before running more analyses.' },
+        { status: 429 }
+      );
+    }
+
     const body = await req.json();
     const { clientImage, clientMediaType, inspoImage, inspoMediaType } = body;
 
@@ -28,7 +39,7 @@ export async function POST(req: NextRequest) {
     try {
       const submission = await prisma.submission.create({
         data: {
-          clientImageUrl: `data:${clientMediaType};base64,${clientImage.slice(0, 100)}...`, // Store reference, not full base64
+          clientImageUrl: `data:${clientMediaType};base64,${clientImage.slice(0, 100)}...`,
           inspoImageUrl: `data:${inspoMediaType};base64,${inspoImage.slice(0, 100)}...`,
           clientHairInfo: result.clientAnalysis as any,
           inspoHairInfo: result.inspoAnalysis as any,
@@ -49,7 +60,6 @@ export async function POST(req: NextRequest) {
         },
       });
     } catch (dbError) {
-      // Don't fail the request if DB write fails — still return the analysis
       console.error('Database write error:', dbError);
     }
 

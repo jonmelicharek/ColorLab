@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
-import crypto from 'crypto';
+import { rateLimit } from '@/lib/rate-limit';
 
 // POST — Send login code to email
 export async function POST(req: NextRequest) {
   try {
+    // Rate limit: 5 login attempts per email per 15 minutes
     const body = await req.json();
     const { email } = body;
 
@@ -13,6 +14,19 @@ export async function POST(req: NextRequest) {
     }
 
     const normalizedEmail = email.toLowerCase().trim();
+
+    // Rate limit by IP
+    const ip = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown';
+    const ipLimit = rateLimit(`login-ip:${ip}`, 10, 15 * 60 * 1000); // 10 per 15 min per IP
+    if (!ipLimit.allowed) {
+      return NextResponse.json({ error: 'Too many login attempts. Please wait and try again.' }, { status: 429 });
+    }
+
+    // Rate limit by email
+    const emailLimit = rateLimit(`login-email:${normalizedEmail}`, 5, 15 * 60 * 1000); // 5 per 15 min per email
+    if (!emailLimit.allowed) {
+      return NextResponse.json({ error: 'Too many code requests. Please check your inbox or wait a few minutes.' }, { status: 429 });
+    }
 
     // Generate 6-digit code
     const code = Math.floor(100000 + Math.random() * 900000).toString();
@@ -60,7 +74,6 @@ export async function POST(req: NextRequest) {
         console.error('Email send error:', emailErr);
       }
     } else {
-      // No email service — log code for development
       console.log(`Login code for ${normalizedEmail}: ${code}`);
     }
 

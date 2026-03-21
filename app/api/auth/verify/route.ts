@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import crypto from 'crypto';
+import { rateLimit } from '@/lib/rate-limit';
 
 // POST — Verify login code and create session
 export async function POST(req: NextRequest) {
@@ -13,6 +14,12 @@ export async function POST(req: NextRequest) {
     }
 
     const normalizedEmail = email.toLowerCase().trim();
+
+    // Rate limit: 10 verify attempts per email per 15 minutes (prevents brute force)
+    const limit = rateLimit(`verify:${normalizedEmail}`, 10, 15 * 60 * 1000);
+    if (!limit.allowed) {
+      return NextResponse.json({ error: 'Too many attempts. Please request a new code.' }, { status: 429 });
+    }
 
     const stylist = await prisma.stylist.findUnique({
       where: { email: normalizedEmail },
