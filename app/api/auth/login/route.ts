@@ -41,7 +41,7 @@ export async function POST(req: NextRequest) {
         const { Resend } = await import('resend');
         const resend = new Resend(process.env.RESEND_API_KEY);
         await resend.emails.send({
-          from: 'ColorLab AI <hello@colorlab.me>',
+          from: 'ColorLab AI <onboarding@resend.dev>',
           to: normalizedEmail,
           subject: `Your ColorLab login code: ${code}`,
           html: `
