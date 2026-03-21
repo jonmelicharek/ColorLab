@@ -111,7 +111,7 @@ async function analyzeClientHair(
   mediaType: string
 ): Promise<HairAnalysis> {
   const response = await anthropic.messages.create({
-    model: 'claude-sonnet-4-20250514',
+    model: 'claude-3-5-sonnet-20241022',
     max_tokens: 1500,
     messages: [
       {
@@ -171,7 +171,7 @@ async function analyzeInspoHair(
   mediaType: string
 ): Promise<InspoAnalysis> {
   const response = await anthropic.messages.create({
-    model: 'claude-sonnet-4-20250514',
+    model: 'claude-3-5-sonnet-20241022',
     max_tokens: 1500,
     messages: [
       {
@@ -278,7 +278,7 @@ Entry ${i + 1}:
     : '\n\nNo exact matches found in our database — please provide your best professional recommendation based on the analysis.';
 
   const response = await anthropic.messages.create({
-    model: 'claude-sonnet-4-20250514',
+    model: 'claude-3-5-sonnet-20241022',
     max_tokens: 3000,
     messages: [
       {
