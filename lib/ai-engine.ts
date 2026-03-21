@@ -175,12 +175,14 @@ Analyze both photos and provide a complete formula recommendation. Respond with 
 }
 
 CRITICAL PROFESSIONAL RULES — you MUST follow these:
+- FORMULA LEVEL CONSISTENCY: When the goal is to go LIGHTER (higher level number), the endFormula must NEVER be a darker level than the rootFormula. Ends should be the same level or lighter than roots unless the client specifically wants a reverse effect (like reverse balayage or going darker). For lightening services: rootFormula level <= midFormula level <= endFormula level. For example, if going from brown to blonde, the ends should be the lightest part, not the darkest.
 - GREY HAIR DEVELOPER RULE: If the client has ANY grey/white hair (even 10-20%), use 10 vol developer for root and mid-shaft color application. Grey hair is resistant and porous — 10 vol deposits color more effectively without unnecessary lift. Only use higher vol on grey if intentionally lifting.
 - Always recommend a strand test for color corrections or when lifting more than 3 levels.
 - For previously colored hair, factor in existing pigment buildup.
 - Bond builders (Olaplex, K18, etc.) should be recommended for any lightening service.
 - Processing times should account for hair porosity — high porosity processes faster.
 - Be specific with product names, shade numbers, ratios, and timing.
+- The rootFormula, midFormula, and endFormula should reflect what is being applied to each zone. If a zone is left untouched, say "Leave natural" or null — do NOT apply a darker formula to that zone unless darkening is the intent.
 ${databaseContext}`
           },
         ],
