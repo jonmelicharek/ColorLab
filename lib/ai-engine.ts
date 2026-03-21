@@ -303,6 +303,13 @@ INSPIRATION ANALYSIS:
 ${JSON.stringify(inspoAnalysis, null, 2)}
 ${databaseContext}
 
+IMPORTANT PROFESSIONAL RULES — always follow these:
+- GREY HAIR DEVELOPER RULE: If the client has ANY grey/white hair (even 10-20%), use 10 vol developer for root and mid-shaft color application. Grey hair is resistant and porous — 10 vol deposits color more effectively without unnecessary lift. Only use higher vol on grey if intentionally lifting.
+- Always recommend a strand test for color corrections or when lifting more than 3 levels.
+- For previously colored hair, factor in existing pigment buildup when recommending formulas.
+- Bond builders (Olaplex, K18, etc.) should be recommended for any lightening service.
+- Processing times should account for hair porosity — high porosity processes faster.
+
 Based on ALL of the above, provide a complete color formula and technique guide. Respond with ONLY a JSON object (no markdown, no backticks):
 
 {
