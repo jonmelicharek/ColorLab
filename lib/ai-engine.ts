@@ -75,15 +75,15 @@ export async function analyzePhotos(
   confidence: number;
 }> {
   
-  // Step 1: Analyze client's current hair
-  const clientAnalysis = await analyzeClientHair(clientImageBase64, clientImageMediaType);
-  
-  // Step 2: Analyze inspiration photo
-  const inspoAnalysis = await analyzeInspoHair(inspoImageBase64, inspoImageMediaType);
-  
+  // Step 1 & 2: Analyze both photos in PARALLEL to save time
+  const [clientAnalysis, inspoAnalysis] = await Promise.all([
+    analyzeClientHair(clientImageBase64, clientImageMediaType),
+    analyzeInspoHair(inspoImageBase64, inspoImageMediaType),
+  ]);
+
   // Step 3: Search formula database for similar transformations
   const matchedEntries = await findSimilarFormulas(clientAnalysis, inspoAnalysis);
-  
+
   // Step 4: Generate final recommendation using all data
   const recommendation = await generateRecommendation(
     clientImageBase64,
