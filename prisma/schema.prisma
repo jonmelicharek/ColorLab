@@ -1,0 +1,175 @@
+// ===========================================
+// ColorLab AI — Database Schema
+// ===========================================
+// This schema defines the before/after photo database,
+// user submissions, formula library, and lead gen system.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+}
+
+// ─── FORMULA DATABASE (populated by you) ────────────────────
+
+model FormulaEntry {
+  id              String   @id @default(cuid())
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  // Before photo metadata
+  beforeImageUrl  String
+  beforeHairColor String            // e.g. "Level 5 warm brown"
+  beforeHairType  String?           // e.g. "2B wavy, medium porosity"
+  beforeCondition String?           // e.g. "Virgin hair, no prior color"
+  beforeLevel     Int?              // 1-10 natural level
+
+  // After photo metadata
+  afterImageUrl   String
+  afterHairColor  String            // e.g. "Level 8 cool blonde balayage"
+  afterLevel      Int?              // 1-10 result level
+
+  // Color formula
+  technique       String            // e.g. "Balayage", "Full foil", "Shadow root"
+  formulaDetails  String            // Full formula text block
+
+  // Structured formula fields
+  colorBrand      String?           // e.g. "Redken", "Wella", "Schwarzkopf"
+  colorLine       String?           // e.g. "Shades EQ", "Koleston Perfect"
+  colorShades     String[]          // e.g. ["7NB", "8V", "9P"]
+  developer       String?           // e.g. "20 vol", "30 vol"
+  developerRatio  String?           // e.g. "1:1", "1:2"
+  lightener       String?           // e.g. "Flash Lift", "BlondMe"
+  lightenerMix    String?           // e.g. "30 vol, 1:2 ratio"
+  toner           String?           // e.g. "Shades EQ 9V + 9T equal parts"
+  tonerDeveloper  String?           // e.g. "Processing solution"
+  additives       String[]          // e.g. ["Olaplex No.1", "B3 Brazilian Bond"]
+  processingTime  String?           // e.g. "35 minutes under heat"
+
+  // Categorization tags
+  tags            String[]          // e.g. ["blonde", "balayage", "cool-tone"]
+  difficulty      String?           // "beginner", "intermediate", "advanced"
+  priceRange      String?           // "$", "$$", "$$$", "$$$$"
+  estimatedTime   String?           // e.g. "3-4 hours"
+
+  // Matching metadata (used by AI for similarity)
+  colorVector     String?           // JSON array of color values for matching
+  notes           String?           // Stylist notes
+
+  // Relations
+  analyses        Analysis[]
+
+  @@index([tags])
+  @@index([technique])
+  @@index([beforeLevel])
+  @@index([afterLevel])
+}
+
+// ─── USER SUBMISSIONS ───────────────────────────────────────
+
+model Submission {
+  id              String   @id @default(cuid())
+  createdAt       DateTime @default(now())
+
+  // Uploaded images
+  clientImageUrl  String            // Photo of the client's current hair
+  inspoImageUrl   String            // Inspiration/goal photo
+
+  // AI-detected metadata
+  clientHairInfo  Json?             // { level, tone, condition, porosity, type }
+  inspoHairInfo   Json?             // { level, tone, highlights, technique }
+
+  // User info (optional, for logged-in users)
+  stylistId       String?
+  stylist         Stylist?  @relation(fields: [stylistId], references: [id])
+
+  // Results
+  analysis        Analysis?
+
+  @@index([stylistId])
+}
+
+model Analysis {
+  id              String   @id @default(cuid())
+  createdAt       DateTime @default(now())
+
+  submissionId    String   @unique
+  submission      Submission @relation(fields: [submissionId], references: [id])
+
+  // AI analysis summary
+  summary         String            // Human-readable summary
+  recommendedFormula String         // Full formula recommendation
+  technique       String            // Recommended technique
+  estimatedTime   String?           // e.g. "2.5-3 hours"
+  difficulty      String?
+  warnings        String[]          // e.g. ["May need pre-lightening session"]
+  tips            String[]          // e.g. ["Use foils for cleaner lift"]
+
+  // Matched database entries
+  matchedEntryId  String?
+  matchedEntry    FormulaEntry? @relation(fields: [matchedEntryId], references: [id])
+  matchConfidence Float?            // 0-1 confidence score
+
+  // Full AI response
+  rawAiResponse   Json?
+
+  @@index([matchedEntryId])
+}
+
+// ─── STYLIST ACCOUNTS ───────────────────────────────────────
+
+model Stylist {
+  id              String   @id @default(cuid())
+  createdAt       DateTime @default(now())
+
+  email           String   @unique
+  name            String
+  salon           String?
+  city            String?
+  state           String?
+  phone           String?
+  instagram       String?
+  specialties     String[]          // e.g. ["balayage", "vivid color", "extensions"]
+
+  // Usage
+  submissions     Submission[]
+  analysisCount   Int      @default(0)
+
+  // Lead gen tracking
+  source          String?           // e.g. "landing_page", "instagram", "referral"
+  referralCode    String?  @unique
+  referredBy      String?
+
+  @@index([email])
+}
+
+// ─── LEAD GEN & WAITLIST ────────────────────────────────────
+
+model Lead {
+  id              String   @id @default(cuid())
+  createdAt       DateTime @default(now())
+
+  email           String   @unique
+  name            String?
+  salon           String?
+  city            String?
+  phone           String?
+  instagram       String?
+
+  source          String?           // "waitlist", "free_tool", "webinar", "referral"
+  utmSource       String?
+  utmMedium       String?
+  utmCampaign     String?
+
+  // Engagement
+  emailsSent      Int      @default(0)
+  lastEmailAt     DateTime?
+  converted       Boolean  @default(false)
+  convertedAt     DateTime?
+
+  @@index([email])
+  @@index([source])
+}
