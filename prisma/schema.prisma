@@ -121,6 +121,12 @@ model Stylist {
   instagram       String?
   specialties     String[]
 
+  // Auth
+  authCode        String?
+  authCodeExpiry  DateTime?
+  sessionToken    String?   @unique
+  lastLoginAt     DateTime?
+
   // Subscription
   stripeCustomerId    String?   @unique
   stripeSubscriptionId String?  @unique
@@ -137,6 +143,13 @@ model Stylist {
   submissions     Submission[]
   analysisCount   Int      @default(0)
   freeAnalysesUsed Int     @default(0)
+  monthlyResetAt  DateTime?
+
+  // Client profiles
+  clients         Client[]
+
+  // Saved formulas
+  savedFormulas   SavedFormula[]
 
   // Lead gen tracking
   source          String?
@@ -145,6 +158,64 @@ model Stylist {
 
   @@index([email])
   @@index([stripeCustomerId])
+  @@index([sessionToken])
+}
+
+// ─── CLIENT PROFILES ────────────────────────────────────────
+
+model Client {
+  id              String   @id @default(cuid())
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  stylistId       String
+  stylist         Stylist  @relation(fields: [stylistId], references: [id])
+
+  name            String
+  email           String?
+  phone           String?
+  instagram       String?
+  notes           String?
+
+  // Hair info
+  naturalLevel    Int?
+  currentColor    String?
+  hairType        String?
+  porosity        String?
+  condition       String?
+  grayPercentage  Int?
+  allergies       String?
+
+  // Photos
+  photoUrl        String?
+
+  // Relations
+  savedFormulas   SavedFormula[]
+
+  @@index([stylistId])
+}
+
+// ─── SAVED FORMULAS ─────────────────────────────────────────
+
+model SavedFormula {
+  id              String   @id @default(cuid())
+  createdAt       DateTime @default(now())
+
+  stylistId       String
+  stylist         Stylist  @relation(fields: [stylistId], references: [id])
+
+  clientId        String?
+  client          Client?  @relation(fields: [clientId], references: [id])
+
+  // Analysis data
+  clientImageUrl  String?
+  inspoImageUrl   String?
+  analysisResult  Json     // Full analysis JSON
+  notes           String?
+  favorite        Boolean  @default(false)
+
+  @@index([stylistId])
+  @@index([clientId])
 }
 
 // ─── LEAD GEN & WAITLIST ────────────────────────────────────

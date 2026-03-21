@@ -57,12 +57,15 @@ export default function HomePage() {
             <Link href="/pricing" className="hover:text-espresso transition-colors">Pricing</Link>
             <Link href="/affiliates" className="hover:text-espresso transition-colors">Affiliates</Link>
           </div>
-          <Link
-            href="/upload"
-            className="bg-espresso text-pearl px-5 py-2 rounded-full text-sm font-medium hover:bg-ink transition-colors flex items-center gap-2"
-          >
-            Try Free <ArrowRight className="w-3.5 h-3.5" />
-          </Link>
+          <div className="flex items-center gap-3">
+            <Link href="/login" className="text-sm text-stone hover:text-espresso transition-colors">Sign In</Link>
+            <Link
+              href="/upload"
+              className="bg-espresso text-pearl px-5 py-2 rounded-full text-sm font-medium hover:bg-ink transition-colors flex items-center gap-2"
+            >
+              Try Free <ArrowRight className="w-3.5 h-3.5" />
+            </Link>
+          </div>
         </div>
       </nav>
 

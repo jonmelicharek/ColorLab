@@ -8,7 +8,7 @@ import {
   Upload, Camera, Sparkles, ArrowRight, ArrowLeft, FlaskConical,
   Clock, AlertTriangle, Lightbulb, ChevronDown, ChevronUp,
   Palette, Scissors, Droplets, RotateCcw, Download, Share2,
-  CheckCircle2, Loader2, Lock, BookOpen, Crown
+  CheckCircle2, Loader2, Lock, BookOpen, Crown, User, Save
 } from 'lucide-react';
 import { cn, fileToBase64, getMediaType, levelToDescription, difficultyColor } from '@/lib/utils';
 
@@ -42,15 +42,24 @@ interface AnalysisResult {
 const FREE_ANALYSIS_LIMIT = 3;
 const STORAGE_KEY = 'colorlab_analyses_used';
 
-function getAnalysesUsed(): number {
+function getLocalAnalysesUsed(): number {
   if (typeof window === 'undefined') return 0;
   return parseInt(localStorage.getItem(STORAGE_KEY) || '0', 10);
 }
 
-function incrementAnalyses(): number {
-  const current = getAnalysesUsed() + 1;
+function incrementLocalAnalyses(): number {
+  const current = getLocalAnalysesUsed() + 1;
   localStorage.setItem(STORAGE_KEY, String(current));
   return current;
+}
+
+interface AuthUser {
+  id: string;
+  email: string;
+  name: string;
+  plan: string;
+  hasWhyAddon: boolean;
+  freeAnalysesUsed: number;
 }
 
 export default function UploadPage() {
@@ -62,17 +71,31 @@ export default function UploadPage() {
   const [result, setResult] = useState<AnalysisResult | null>(null);
   const [error, setError] = useState<string>('');
   const [analysesUsed, setAnalysesUsed] = useState(0);
+  const [user, setUser] = useState<AuthUser | null>(null);
+  const [savedMessage, setSavedMessage] = useState('');
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
     formula: true, technique: true, warnings: false, tips: false, why: false,
   });
 
   useEffect(() => {
-    setAnalysesUsed(getAnalysesUsed());
+    // Check auth status
+    fetch('/api/auth/me')
+      .then(r => r.json())
+      .then(data => {
+        if (data.user) {
+          setUser(data.user);
+          setAnalysesUsed(data.user.freeAnalysesUsed);
+        } else {
+          setAnalysesUsed(getLocalAnalysesUsed());
+        }
+      })
+      .catch(() => {
+        setAnalysesUsed(getLocalAnalysesUsed());
+      });
 
     // Check for checkout success
     const params = new URLSearchParams(window.location.search);
     if (params.get('checkout') === 'success') {
-      // Clear the URL params
       window.history.replaceState({}, '', '/upload');
     }
   }, []);
@@ -107,11 +130,25 @@ export default function UploadPage() {
     maxSize: 10 * 1024 * 1024,
   });
 
+  // Get the plan limit
+  const getPlanLimit = (): number => {
+    if (!user) return FREE_ANALYSIS_LIMIT;
+    if (user.plan === 'salon' || user.plan === 'enterprise') return -1; // unlimited
+    if (user.plan === 'stylist') return 50;
+    return FREE_ANALYSIS_LIMIT;
+  };
+
+  const canUseAnalysis = (): boolean => {
+    const limit = getPlanLimit();
+    if (limit === -1) return true;
+    return analysesUsed < limit;
+  };
+
   async function handleAnalyze() {
     if (!clientImage || !inspoImage) return;
 
-    // Check free limit
-    if (analysesUsed >= FREE_ANALYSIS_LIMIT) {
+    // Check limit
+    if (!canUseAnalysis()) {
       setStep('paywall');
       return;
     }
@@ -140,12 +177,40 @@ export default function UploadPage() {
 
       const data = await res.json();
       setResult(data);
-      const newCount = incrementAnalyses();
-      setAnalysesUsed(newCount);
+
+      // Track usage
+      if (user) {
+        // Server-side tracking for logged-in users
+        await fetch('/api/stripe/usage', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email: user.email }),
+        });
+      } else {
+        incrementLocalAnalyses();
+      }
+      setAnalysesUsed(prev => prev + 1);
       setStep('results');
     } catch (err: any) {
       setError(err.message || 'Something went wrong.');
       setStep('upload');
+    }
+  }
+
+  async function saveFormula() {
+    if (!result || !user) return;
+    try {
+      const res = await fetch('/api/saved-formulas', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ analysisResult: result }),
+      });
+      if (res.ok) {
+        setSavedMessage('Formula saved to your account!');
+        setTimeout(() => setSavedMessage(''), 3000);
+      }
+    } catch {
+      // silently fail
     }
   }
 
@@ -163,8 +228,6 @@ export default function UploadPage() {
     setExpandedSections(prev => ({ ...prev, [key]: !prev[key] }));
   }
 
-  const remainingFree = Math.max(0, FREE_ANALYSIS_LIMIT - analysesUsed);
-
   return (
     <div className="min-h-screen bg-pearl">
       {/* Nav */}
@@ -177,14 +240,14 @@ export default function UploadPage() {
             <span className="font-display text-lg font-semibold tracking-tight">ColorLab</span>
             <span className="text-[9px] font-mono uppercase tracking-widest text-caramel bg-caramel/10 px-1.5 py-0.5 rounded-full">AI</span>
           </Link>
-          <div className="flex items-center gap-4">
-            {/* Free analyses counter */}
-            {remainingFree > 0 && remainingFree <= FREE_ANALYSIS_LIMIT && (
+          <div className="flex items-center gap-3">
+            {/* Analyses counter */}
+            {getPlanLimit() !== -1 && (
               <span className="text-xs text-stone bg-cream px-3 py-1 rounded-full">
-                {remainingFree} free {remainingFree === 1 ? 'analysis' : 'analyses'} left
+                {Math.max(0, (getPlanLimit() === -1 ? 0 : getPlanLimit()) - analysesUsed)} left
               </span>
             )}
-            {remainingFree === 0 && (
+            {!canUseAnalysis() && (
               <Link href="/pricing" className="text-xs text-caramel bg-caramel/10 px-3 py-1 rounded-full hover:bg-caramel/20 transition-colors flex items-center gap-1">
                 <Crown className="w-3 h-3" /> Upgrade
               </Link>
@@ -193,6 +256,15 @@ export default function UploadPage() {
               <button onClick={handleReset} className="text-sm text-stone hover:text-espresso transition-colors flex items-center gap-1.5">
                 <RotateCcw className="w-3.5 h-3.5" /> New Analysis
               </button>
+            )}
+            {user ? (
+              <Link href="/account" className="text-sm text-stone hover:text-espresso transition-colors flex items-center gap-1.5">
+                <User className="w-3.5 h-3.5" /> Account
+              </Link>
+            ) : (
+              <Link href="/login" className="text-sm bg-espresso text-pearl px-4 py-1.5 rounded-full hover:bg-ink transition-colors">
+                Sign In
+              </Link>
             )}
           </div>
         </div>
@@ -417,10 +489,27 @@ export default function UploadPage() {
                     <span>{result.recommendation.estimatedPrice}</span>
                   </p>
                 </div>
-                <div className="flex gap-2">
-                  <button className="text-sm text-stone hover:text-espresso border border-sand hover:border-clay px-4 py-2 rounded-full transition-all flex items-center gap-1.5">
-                    <Download className="w-3.5 h-3.5" /> Save
-                  </button>
+                <div className="flex gap-2 items-center">
+                  {savedMessage && (
+                    <span className="text-xs text-emerald-600 bg-emerald-50 px-3 py-1 rounded-full flex items-center gap-1">
+                      <CheckCircle2 className="w-3 h-3" /> {savedMessage}
+                    </span>
+                  )}
+                  {user ? (
+                    <button
+                      onClick={saveFormula}
+                      className="text-sm text-stone hover:text-espresso border border-sand hover:border-clay px-4 py-2 rounded-full transition-all flex items-center gap-1.5"
+                    >
+                      <Save className="w-3.5 h-3.5" /> Save to Account
+                    </button>
+                  ) : (
+                    <Link
+                      href="/login"
+                      className="text-sm text-stone hover:text-espresso border border-sand hover:border-clay px-4 py-2 rounded-full transition-all flex items-center gap-1.5"
+                    >
+                      <Save className="w-3.5 h-3.5" /> Sign in to Save
+                    </Link>
+                  )}
                   <button className="text-sm text-stone hover:text-espresso border border-sand hover:border-clay px-4 py-2 rounded-full transition-all flex items-center gap-1.5">
                     <Share2 className="w-3.5 h-3.5" /> Share
                   </button>
@@ -681,17 +770,27 @@ export default function UploadPage() {
 
               {/* CTA */}
               <div className="text-center py-8 border-t border-sand">
-                {remainingFree > 0 ? (
+                {canUseAnalysis() ? (
                   <>
                     <p className="text-stone text-sm mb-3">
-                      You have {remainingFree} free {remainingFree === 1 ? 'analysis' : 'analyses'} remaining.
+                      {!user && `You have ${Math.max(0, FREE_ANALYSIS_LIMIT - analysesUsed)} free ${FREE_ANALYSIS_LIMIT - analysesUsed === 1 ? 'analysis' : 'analyses'} remaining.`}
+                      {user && getPlanLimit() !== -1 && `You have ${Math.max(0, getPlanLimit() - analysesUsed)} analyses remaining this month.`}
+                      {user && getPlanLimit() === -1 && 'Unlimited analyses on your plan.'}
+                      {!user && ' Sign in to track your usage.'}
                     </p>
-                    <button
-                      onClick={handleReset}
-                      className="inline-flex items-center gap-2 bg-espresso text-pearl px-6 py-3 rounded-full text-sm font-medium hover:bg-ink transition-colors"
-                    >
-                      <FlaskConical className="w-4 h-4" /> Run Another Analysis
-                    </button>
+                    <div className="flex items-center justify-center gap-3">
+                      <button
+                        onClick={handleReset}
+                        className="inline-flex items-center gap-2 bg-espresso text-pearl px-6 py-3 rounded-full text-sm font-medium hover:bg-ink transition-colors"
+                      >
+                        <FlaskConical className="w-4 h-4" /> Run Another Analysis
+                      </button>
+                      {!user && (
+                        <Link href="/login" className="inline-flex items-center gap-2 text-sm text-stone hover:text-espresso border border-sand px-5 py-3 rounded-full transition-colors">
+                          <User className="w-4 h-4" /> Sign In
+                        </Link>
+                      )}
+                    </div>
                   </>
                 ) : (
                   <>
