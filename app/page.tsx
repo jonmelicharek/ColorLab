@@ -57,98 +57,160 @@ const rotateIn = {
   },
 };
 
+/* ─── Helper: generate a wavy hair strand path ──── */
+function strandPath(startX: number, amplitude: number, wavelength: number, height: number, drift: number = 0): string {
+  const points: string[] = [`M${startX},0`];
+  const steps = 8;
+  for (let i = 1; i <= steps; i++) {
+    const y = (height / steps) * i;
+    const xOff = Math.sin((i / steps) * Math.PI * wavelength) * amplitude + drift * (i / steps);
+    points.push(`Q${startX + xOff + (i % 2 === 0 ? amplitude * 0.3 : -amplitude * 0.3)},${y - height / steps / 2} ${startX + xOff},${y}`);
+  }
+  return points.join(' ');
+}
+
 /* ─── Flowing Hair SVG Component ──────────────────── */
 function FlowingHair() {
+  // Generate many strands with different parameters
+  const rightStrands = Array.from({ length: 18 }, (_, i) => ({
+    startX: 120 + i * 18 + (i % 3) * 7,
+    amp: 15 + (i % 5) * 8,
+    wave: 2 + (i % 3) * 0.5,
+    drift: (i % 2 === 0 ? 1 : -1) * (5 + i * 2),
+    width: 1 + (i % 4) * 0.5,
+    opacity: 0.03 + (i % 5) * 0.012,
+  }));
+
+  const leftStrands = Array.from({ length: 14 }, (_, i) => ({
+    startX: 40 + i * 20 + (i % 3) * 5,
+    amp: 12 + (i % 4) * 9,
+    wave: 1.5 + (i % 3) * 0.7,
+    drift: (i % 2 === 0 ? -1 : 1) * (4 + i * 1.5),
+    width: 0.8 + (i % 3) * 0.5,
+    opacity: 0.02 + (i % 4) * 0.01,
+  }));
+
+  const centerStrands = Array.from({ length: 10 }, (_, i) => ({
+    startX: 30 + i * 14,
+    amp: 10 + (i % 3) * 6,
+    wave: 2 + (i % 2),
+    drift: (i % 2 === 0 ? 1 : -1) * 8,
+    width: 0.7 + (i % 3) * 0.4,
+    opacity: 0.015 + (i % 3) * 0.01,
+  }));
+
   return (
     <div className="absolute inset-0 overflow-hidden pointer-events-none" aria-hidden="true">
-      {/* Main flowing strands - right side */}
+      {/* Dense right cluster */}
       <svg
-        className="absolute -right-20 top-10 w-[500px] h-[700px] opacity-[0.06] hair-strand"
-        viewBox="0 0 400 600"
+        className="absolute -right-10 top-0 w-[600px] h-[750px] hair-strand"
+        viewBox="0 0 500 700"
         fill="none"
       >
-        <path
-          d="M200,0 C220,80 180,160 210,240 C240,320 190,400 220,480 C250,560 200,600 200,600"
-          stroke="url(#hair-grad-1)" strokeWidth="3" fill="none"
-        />
-        <path
-          d="M220,0 C250,100 200,180 240,260 C280,340 210,420 250,500 C290,580 230,600 230,600"
-          stroke="url(#hair-grad-1)" strokeWidth="2.5" fill="none"
-        />
-        <path
-          d="M180,0 C160,90 200,170 170,250 C140,330 190,410 160,490 C130,570 180,600 180,600"
-          stroke="url(#hair-grad-1)" strokeWidth="2" fill="none"
-        />
-        <path
-          d="M240,0 C270,70 230,150 260,230 C290,310 240,390 270,470 C300,550 250,600 250,600"
-          stroke="url(#hair-grad-1)" strokeWidth="1.5" fill="none"
-        />
-        <path
-          d="M160,0 C130,110 170,190 140,270 C110,350 160,430 130,510 C100,590 150,600 150,600"
-          stroke="url(#hair-grad-1)" strokeWidth="2" fill="none"
-        />
+        {rightStrands.map((s, i) => (
+          <path
+            key={`r-${i}`}
+            d={strandPath(s.startX, s.amp, s.wave, 700, s.drift)}
+            stroke="url(#hair-grad-1)" strokeWidth={s.width} fill="none" opacity={s.opacity}
+          />
+        ))}
         <defs>
           <linearGradient id="hair-grad-1" x1="0%" y1="0%" x2="0%" y2="100%">
             <stop offset="0%" stopColor="#C8874B" />
-            <stop offset="50%" stopColor="#B87333" />
+            <stop offset="35%" stopColor="#B87333" />
+            <stop offset="70%" stopColor="#8A7E72" />
             <stop offset="100%" stopColor="#3D2E1F" />
           </linearGradient>
         </defs>
       </svg>
 
-      {/* Secondary strands - left side */}
+      {/* Dense left cluster */}
       <svg
-        className="absolute -left-10 top-32 w-[400px] h-[600px] opacity-[0.04] hair-strand-2"
-        viewBox="0 0 300 500"
+        className="absolute -left-10 top-20 w-[500px] h-[650px] hair-strand-2"
+        viewBox="0 0 400 600"
         fill="none"
       >
-        <path
-          d="M150,0 C130,70 170,140 140,210 C110,280 160,350 130,420 C100,490 150,500 150,500"
-          stroke="url(#hair-grad-2)" strokeWidth="2.5" fill="none"
-        />
-        <path
-          d="M170,0 C200,90 150,170 190,250 C230,330 170,410 210,490"
-          stroke="url(#hair-grad-2)" strokeWidth="2" fill="none"
-        />
-        <path
-          d="M130,0 C100,80 140,160 110,240 C80,320 130,400 100,480"
-          stroke="url(#hair-grad-2)" strokeWidth="1.5" fill="none"
-        />
+        {leftStrands.map((s, i) => (
+          <path
+            key={`l-${i}`}
+            d={strandPath(s.startX, s.amp, s.wave, 600, s.drift)}
+            stroke="url(#hair-grad-2)" strokeWidth={s.width} fill="none" opacity={s.opacity}
+          />
+        ))}
         <defs>
           <linearGradient id="hair-grad-2" x1="0%" y1="0%" x2="0%" y2="100%">
             <stop offset="0%" stopColor="#C4736E" />
-            <stop offset="50%" stopColor="#C8874B" />
+            <stop offset="40%" stopColor="#C8874B" />
             <stop offset="100%" stopColor="#8A7E72" />
           </linearGradient>
         </defs>
       </svg>
 
-      {/* Wispy floating strands */}
+      {/* Wispy center strands */}
       <svg
-        className="absolute right-1/4 top-20 w-[200px] h-[400px] opacity-[0.05] hair-strand-3"
-        viewBox="0 0 150 300"
+        className="absolute left-1/4 right-1/4 top-10 w-[300px] h-[500px] mx-auto hair-strand-3"
+        viewBox="0 0 200 450"
         fill="none"
       >
-        <path
-          d="M75,0 Q90,50 70,100 Q50,150 80,200 Q110,250 75,300"
-          stroke="#C8874B" strokeWidth="1.5" fill="none"
-        />
-        <path
-          d="M85,0 Q60,60 90,120 Q120,180 80,240 Q40,300 85,300"
-          stroke="#B87333" strokeWidth="1" fill="none"
-        />
+        {centerStrands.map((s, i) => (
+          <path
+            key={`c-${i}`}
+            d={strandPath(s.startX, s.amp, s.wave, 450, s.drift)}
+            stroke="url(#hair-grad-3)" strokeWidth={s.width} fill="none" opacity={s.opacity}
+          />
+        ))}
+        <defs>
+          <linearGradient id="hair-grad-3" x1="0%" y1="0%" x2="0%" y2="100%">
+            <stop offset="0%" stopColor="#E5A84B" />
+            <stop offset="50%" stopColor="#C8874B" />
+            <stop offset="100%" stopColor="#B87333" />
+          </linearGradient>
+        </defs>
       </svg>
 
-      {/* Drifting accent strand */}
+      {/* Extra wispy drifting strands scattered across */}
       <svg
-        className="absolute left-1/3 top-40 w-[150px] h-[300px] opacity-[0.03] hair-strand-drift"
-        viewBox="0 0 100 250"
+        className="absolute right-1/3 top-32 w-[250px] h-[400px] hair-strand-drift"
+        viewBox="0 0 200 380"
         fill="none"
       >
-        <path
-          d="M50,0 C30,40 70,80 40,120 C10,160 60,200 50,250"
-          stroke="#C4736E" strokeWidth="2" fill="none"
-        />
+        {Array.from({ length: 8 }, (_, i) => (
+          <path
+            key={`d-${i}`}
+            d={strandPath(20 + i * 22, 18 + i * 3, 2.5, 380, (i % 2 === 0 ? 1 : -1) * 12)}
+            stroke="#C8874B" strokeWidth={0.6 + (i % 3) * 0.3} fill="none" opacity={0.02 + (i % 4) * 0.008}
+          />
+        ))}
+      </svg>
+
+      {/* Far left whisps */}
+      <svg
+        className="absolute left-[5%] top-48 w-[180px] h-[350px] hair-strand-3"
+        viewBox="0 0 140 320"
+        fill="none"
+      >
+        {Array.from({ length: 6 }, (_, i) => (
+          <path
+            key={`fl-${i}`}
+            d={strandPath(15 + i * 20, 14 + i * 4, 1.8 + i * 0.3, 320, -6 + i * 2)}
+            stroke="#C4736E" strokeWidth={0.5 + (i % 3) * 0.4} fill="none" opacity={0.02 + (i % 3) * 0.01}
+          />
+        ))}
+      </svg>
+
+      {/* Far right whisps */}
+      <svg
+        className="absolute right-[8%] top-60 w-[200px] h-[300px] hair-strand"
+        viewBox="0 0 160 280"
+        fill="none"
+      >
+        {Array.from({ length: 7 }, (_, i) => (
+          <path
+            key={`fr-${i}`}
+            d={strandPath(10 + i * 20, 10 + i * 5, 2.2, 280, 4 + i * 2)}
+            stroke="#B87333" strokeWidth={0.6 + (i % 2) * 0.3} fill="none" opacity={0.018 + (i % 3) * 0.008}
+          />
+        ))}
       </svg>
     </div>
   );
@@ -162,68 +224,156 @@ function ScrollHairSection() {
     offset: ["start end", "end start"],
   });
 
-  const y1 = useTransform(scrollYProgress, [0, 1], [0, -80]);
-  const y2 = useTransform(scrollYProgress, [0, 1], [0, -120]);
-  const y3 = useTransform(scrollYProgress, [0, 1], [0, -60]);
-  const rotate1 = useTransform(scrollYProgress, [0, 0.5, 1], [0, 3, -2]);
-  const rotate2 = useTransform(scrollYProgress, [0, 0.5, 1], [0, -4, 2]);
-  const opacity = useTransform(scrollYProgress, [0, 0.3, 0.7, 1], [0, 1, 1, 0]);
+  const y1 = useTransform(scrollYProgress, [0, 1], [0, -100]);
+  const y2 = useTransform(scrollYProgress, [0, 1], [0, -150]);
+  const y3 = useTransform(scrollYProgress, [0, 1], [0, -70]);
+  const y4 = useTransform(scrollYProgress, [0, 1], [0, -180]);
+  const y5 = useTransform(scrollYProgress, [0, 1], [0, -50]);
+  const rotate1 = useTransform(scrollYProgress, [0, 0.5, 1], [0, 4, -3]);
+  const rotate2 = useTransform(scrollYProgress, [0, 0.5, 1], [0, -5, 3]);
+  const rotate3 = useTransform(scrollYProgress, [0, 0.5, 1], [2, -2, 2]);
+  const opacity = useTransform(scrollYProgress, [0, 0.2, 0.8, 1], [0, 1, 1, 0]);
+
+  // Generate scroll-linked strand sets
+  const scrollStrandsRight = Array.from({ length: 14 }, (_, i) => ({
+    startX: 30 + i * 16,
+    amp: 12 + (i % 4) * 7,
+    wave: 2 + (i % 3) * 0.4,
+    drift: (i % 2 === 0 ? 1 : -1) * (6 + i),
+    width: 0.8 + (i % 3) * 0.5,
+    opacity: 0.04 + (i % 5) * 0.015,
+  }));
+
+  const scrollStrandsLeft = Array.from({ length: 12 }, (_, i) => ({
+    startX: 20 + i * 16,
+    amp: 10 + (i % 3) * 8,
+    wave: 1.8 + (i % 4) * 0.5,
+    drift: (i % 2 === 0 ? -1 : 1) * (5 + i * 1.5),
+    width: 0.7 + (i % 3) * 0.4,
+    opacity: 0.03 + (i % 4) * 0.012,
+  }));
+
+  const scrollStrandsCenter = Array.from({ length: 10 }, (_, i) => ({
+    startX: 25 + i * 15,
+    amp: 8 + (i % 3) * 5,
+    wave: 2.2 + (i % 2) * 0.6,
+    drift: (i % 2 === 0 ? 1 : -1) * 5,
+    width: 0.6 + (i % 3) * 0.3,
+    opacity: 0.025 + (i % 4) * 0.01,
+  }));
+
+  const scrollStrandsExtra1 = Array.from({ length: 8 }, (_, i) => ({
+    startX: 15 + i * 18,
+    amp: 14 + (i % 3) * 6,
+    wave: 1.5 + (i % 2) * 0.8,
+    drift: (i % 2 === 0 ? 1 : -1) * (3 + i * 2),
+    width: 0.5 + (i % 2) * 0.4,
+    opacity: 0.02 + (i % 3) * 0.01,
+  }));
+
+  const scrollStrandsExtra2 = Array.from({ length: 8 }, (_, i) => ({
+    startX: 20 + i * 20,
+    amp: 16 + (i % 4) * 5,
+    wave: 2.5 + (i % 3) * 0.3,
+    drift: (i % 2 === 0 ? -1 : 1) * (7 + i),
+    width: 0.6 + (i % 2) * 0.3,
+    opacity: 0.02 + (i % 3) * 0.008,
+  }));
 
   return (
     <div ref={ref} className="absolute inset-0 overflow-hidden pointer-events-none" aria-hidden="true">
-      {/* Scroll-responsive flowing strands */}
+      {/* Right cluster — fast parallax */}
       <motion.svg
         style={{ y: y1, rotate: rotate1, opacity }}
-        className="absolute right-10 top-0 w-[300px] h-[500px]"
-        viewBox="0 0 250 400"
+        className="absolute right-0 top-0 w-[350px] h-[550px]"
+        viewBox="0 0 280 500"
         fill="none"
       >
-        <path
-          d="M125,0 C145,60 105,120 135,180 C165,240 115,300 145,360 C175,400 125,400 125,400"
-          stroke="url(#scroll-grad)" strokeWidth="2" fill="none" opacity="0.08"
-        />
-        <path
-          d="M140,0 C170,80 120,150 160,220 C200,290 140,360 160,400"
-          stroke="url(#scroll-grad)" strokeWidth="1.5" fill="none" opacity="0.06"
-        />
-        <path
-          d="M110,0 C80,70 130,140 100,210 C70,280 120,350 90,400"
-          stroke="url(#scroll-grad)" strokeWidth="1.5" fill="none" opacity="0.06"
-        />
+        {scrollStrandsRight.map((s, i) => (
+          <path
+            key={`sr-${i}`}
+            d={strandPath(s.startX, s.amp, s.wave, 500, s.drift)}
+            stroke="url(#scroll-grad)" strokeWidth={s.width} fill="none" opacity={s.opacity}
+          />
+        ))}
         <defs>
           <linearGradient id="scroll-grad" x1="0%" y1="0%" x2="0%" y2="100%">
             <stop offset="0%" stopColor="#C8874B" />
+            <stop offset="50%" stopColor="#B87333" />
             <stop offset="100%" stopColor="#3D2E1F" />
           </linearGradient>
         </defs>
       </motion.svg>
 
+      {/* Left cluster — slower parallax, opposite rotation */}
       <motion.svg
         style={{ y: y2, rotate: rotate2, opacity }}
-        className="absolute left-10 top-20 w-[250px] h-[400px]"
-        viewBox="0 0 200 350"
+        className="absolute left-0 top-10 w-[300px] h-[500px]"
+        viewBox="0 0 240 450"
         fill="none"
       >
-        <path
-          d="M100,0 C80,50 120,100 90,150 C60,200 110,250 80,300 C50,350 100,350 100,350"
-          stroke="#C4736E" strokeWidth="1.5" fill="none" opacity="0.06"
-        />
-        <path
-          d="M120,0 C150,70 100,130 140,190 C180,250 120,310 140,350"
-          stroke="#B87333" strokeWidth="1" fill="none" opacity="0.05"
-        />
+        {scrollStrandsLeft.map((s, i) => (
+          <path
+            key={`sl-${i}`}
+            d={strandPath(s.startX, s.amp, s.wave, 450, s.drift)}
+            stroke="url(#scroll-grad-2)" strokeWidth={s.width} fill="none" opacity={s.opacity}
+          />
+        ))}
+        <defs>
+          <linearGradient id="scroll-grad-2" x1="0%" y1="0%" x2="0%" y2="100%">
+            <stop offset="0%" stopColor="#C4736E" />
+            <stop offset="50%" stopColor="#C8874B" />
+            <stop offset="100%" stopColor="#8A7E72" />
+          </linearGradient>
+        </defs>
       </motion.svg>
 
+      {/* Center whisps — gentle drift */}
       <motion.svg
-        style={{ y: y3, opacity }}
-        className="absolute right-1/3 top-10 w-[180px] h-[350px]"
-        viewBox="0 0 140 280"
+        style={{ y: y3, rotate: rotate3, opacity }}
+        className="absolute left-1/4 top-5 w-[250px] h-[400px]"
+        viewBox="0 0 200 370"
         fill="none"
       >
-        <path
-          d="M70,0 Q90,40 65,80 Q40,120 75,160 Q110,200 70,240 Q30,280 70,280"
-          stroke="#C8874B" strokeWidth="1" fill="none" opacity="0.05"
-        />
+        {scrollStrandsCenter.map((s, i) => (
+          <path
+            key={`sc-${i}`}
+            d={strandPath(s.startX, s.amp, s.wave, 370, s.drift)}
+            stroke="#C8874B" strokeWidth={s.width} fill="none" opacity={s.opacity}
+          />
+        ))}
+      </motion.svg>
+
+      {/* Extra layer — fastest parallax, right-center */}
+      <motion.svg
+        style={{ y: y4, opacity }}
+        className="absolute right-1/4 top-16 w-[220px] h-[420px]"
+        viewBox="0 0 180 390"
+        fill="none"
+      >
+        {scrollStrandsExtra1.map((s, i) => (
+          <path
+            key={`se1-${i}`}
+            d={strandPath(s.startX, s.amp, s.wave, 390, s.drift)}
+            stroke="url(#scroll-grad)" strokeWidth={s.width} fill="none" opacity={s.opacity}
+          />
+        ))}
+      </motion.svg>
+
+      {/* Extra layer — slowest parallax, left-center */}
+      <motion.svg
+        style={{ y: y5, rotate: rotate2, opacity }}
+        className="absolute left-[15%] top-24 w-[200px] h-[380px]"
+        viewBox="0 0 170 350"
+        fill="none"
+      >
+        {scrollStrandsExtra2.map((s, i) => (
+          <path
+            key={`se2-${i}`}
+            d={strandPath(s.startX, s.amp, s.wave, 350, s.drift)}
+            stroke="url(#scroll-grad-2)" strokeWidth={s.width} fill="none" opacity={s.opacity}
+          />
+        ))}
       </motion.svg>
     </div>
   );
@@ -829,15 +979,33 @@ export default function HomePage() {
 
       {/* ─── SOCIAL PROOF ────────────────────────────── */}
       <section className="py-24 px-6 bg-espresso text-pearl relative overflow-hidden">
-        {/* Subtle flowing strands in dark section */}
+        {/* Dense flowing strands in dark section */}
         <div className="absolute inset-0 pointer-events-none" aria-hidden="true">
           <svg
-            className="absolute -right-20 top-0 w-[400px] h-[500px] opacity-[0.03] hair-strand-2"
-            viewBox="0 0 300 400"
+            className="absolute -right-10 top-0 w-[500px] h-[500px] hair-strand"
+            viewBox="0 0 400 450"
             fill="none"
           >
-            <path d="M150,0 C170,60 130,120 160,180 C190,240 140,300 170,360" stroke="#C8874B" strokeWidth="2" fill="none" />
-            <path d="M170,0 C200,80 150,150 190,220 C230,290 170,360 190,400" stroke="#E5A84B" strokeWidth="1.5" fill="none" />
+            {Array.from({ length: 12 }, (_, i) => (
+              <path
+                key={`dp-r-${i}`}
+                d={strandPath(40 + i * 28, 14 + (i % 4) * 6, 2 + (i % 3) * 0.4, 450, (i % 2 === 0 ? 1 : -1) * (5 + i * 2))}
+                stroke="#C8874B" strokeWidth={0.6 + (i % 3) * 0.3} fill="none" opacity={0.025 + (i % 4) * 0.008}
+              />
+            ))}
+          </svg>
+          <svg
+            className="absolute -left-10 top-10 w-[400px] h-[450px] hair-strand-2"
+            viewBox="0 0 320 420"
+            fill="none"
+          >
+            {Array.from({ length: 10 }, (_, i) => (
+              <path
+                key={`dp-l-${i}`}
+                d={strandPath(30 + i * 26, 12 + (i % 3) * 7, 1.8 + (i % 4) * 0.5, 420, (i % 2 === 0 ? -1 : 1) * (4 + i * 1.5))}
+                stroke="#E5A84B" strokeWidth={0.5 + (i % 2) * 0.3} fill="none" opacity={0.02 + (i % 3) * 0.008}
+              />
+            ))}
           </svg>
         </div>
 
@@ -895,13 +1063,32 @@ export default function HomePage() {
       <section id="waitlist" className="py-24 px-6 relative overflow-hidden">
         {/* Background hair accent */}
         <svg
-          className="absolute -left-20 bottom-0 w-[300px] h-[400px] opacity-[0.03] hair-strand"
-          viewBox="0 0 250 350"
+          className="absolute -left-10 bottom-0 w-[400px] h-[450px] hair-strand"
+          viewBox="0 0 320 420"
           fill="none"
           aria-hidden="true"
         >
-          <path d="M125,0 C100,60 150,120 120,180 C90,240 140,300 125,350" stroke="#C8874B" strokeWidth="2" fill="none" />
-          <path d="M145,0 C170,70 130,140 160,210 C190,280 145,350 145,350" stroke="#B87333" strokeWidth="1.5" fill="none" />
+          {Array.from({ length: 10 }, (_, i) => (
+            <path
+              key={`wl-${i}`}
+              d={strandPath(25 + i * 28, 12 + (i % 3) * 6, 2 + (i % 2) * 0.5, 420, (i % 2 === 0 ? 1 : -1) * (4 + i * 2))}
+              stroke={i % 2 === 0 ? '#C8874B' : '#B87333'} strokeWidth={0.6 + (i % 3) * 0.3} fill="none" opacity={0.02 + (i % 4) * 0.008}
+            />
+          ))}
+        </svg>
+        <svg
+          className="absolute -right-10 top-10 w-[300px] h-[350px] hair-strand-2"
+          viewBox="0 0 240 320"
+          fill="none"
+          aria-hidden="true"
+        >
+          {Array.from({ length: 8 }, (_, i) => (
+            <path
+              key={`wlr-${i}`}
+              d={strandPath(20 + i * 26, 10 + (i % 3) * 5, 1.8 + (i % 3) * 0.4, 320, (i % 2 === 0 ? -1 : 1) * (3 + i))}
+              stroke="#C4736E" strokeWidth={0.5 + (i % 2) * 0.3} fill="none" opacity={0.015 + (i % 3) * 0.008}
+            />
+          ))}
         </svg>
 
         <div className="max-w-2xl mx-auto text-center relative">
