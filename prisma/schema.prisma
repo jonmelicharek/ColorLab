@@ -35,7 +35,7 @@ model FormulaEntry {
   // Color formula
   technique       String            // e.g. "Balayage", "Full foil", "Shadow root"
   formulaDetails  String            // Full formula text block
-
+  
   // Structured formula fields
   colorBrand      String?           // e.g. "Redken", "Wella", "Schwarzkopf"
   colorLine       String?           // e.g. "Shades EQ", "Koleston Perfect"
@@ -112,7 +112,7 @@ model Analysis {
   matchedEntryId  String?
   matchedEntry    FormulaEntry? @relation(fields: [matchedEntryId], references: [id])
   matchConfidence Float?            // 0-1 confidence score
-
+  
   // Full AI response
   rawAiResponse   Json?
 
@@ -124,7 +124,7 @@ model Analysis {
 model Stylist {
   id              String   @id @default(cuid())
   createdAt       DateTime @default(now())
-
+  
   email           String   @unique
   name            String
   salon           String?
@@ -133,11 +133,11 @@ model Stylist {
   phone           String?
   instagram       String?
   specialties     String[]          // e.g. ["balayage", "vivid color", "extensions"]
-
+  
   // Usage
   submissions     Submission[]
   analysisCount   Int      @default(0)
-
+  
   // Lead gen tracking
   source          String?           // e.g. "landing_page", "instagram", "referral"
   referralCode    String?  @unique
@@ -158,7 +158,7 @@ model Lead {
   city            String?
   phone           String?
   instagram       String?
-
+  
   source          String?           // "waitlist", "free_tool", "webinar", "referral"
   utmSource       String?
   utmMedium       String?

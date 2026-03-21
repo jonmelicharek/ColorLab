@@ -90,15 +90,15 @@ const sampleFormulas = [
 ];
 
 async function main() {
-  console.log('Seeding ColorLab AI database...\n');
+  console.log('🎨 Seeding ColorLab AI database...\n');
 
   for (const formula of sampleFormulas) {
     const entry = await prisma.formulaEntry.create({ data: formula });
-    console.log(`  Created: ${entry.technique} (Level ${entry.beforeLevel} -> ${entry.afterLevel})`);
+    console.log(`  ✓ Created: ${entry.technique} (Level ${entry.beforeLevel} → ${entry.afterLevel})`);
   }
 
-  console.log(`\nSeeded ${sampleFormulas.length} formula entries.`);
-  console.log('Add more entries via the admin dashboard at /dashboard');
+  console.log(`\n✅ Seeded ${sampleFormulas.length} formula entries.`);
+  console.log('💡 Add more entries via the admin dashboard at /dashboard');
 }
 
 main()

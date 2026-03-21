@@ -1,0 +1,56 @@
+# ═══════════════════════════════════════════════════════════════
+# ColorLab AI — Docker Compose (Local Development)
+# ═══════════════════════════════════════════════════════════════
+# Start:   docker compose up -d
+# Stop:    docker compose down
+# Reset:   docker compose down -v  (deletes all data)
+# ═══════════════════════════════════════════════════════════════
+
+version: '3.9'
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: colorlab-postgres
+    restart: unless-stopped
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: colorlab
+      POSTGRES_PASSWORD: colorlab_dev
+      POSTGRES_DB: colorlab
+    volumes:
+      - colorlab_pgdata:/var/lib/postgresql/data
+      - ./database.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U colorlab"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # Optional: pgAdmin web UI for database management
+  # Access at http://localhost:5050
+  # Login: admin@colorlab.ai / admin
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: colorlab-pgadmin
+    restart: unless-stopped
+    ports:
+      - "5050:80"
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@colorlab.ai
+      PGADMIN_DEFAULT_PASSWORD: admin
+      PGADMIN_CONFIG_SERVER_MODE: "False"
+    volumes:
+      - colorlab_pgadmin:/var/lib/pgadmin
+    depends_on:
+      postgres:
+        condition: service_healthy
+    profiles:
+      - tools
+
+volumes:
+  colorlab_pgdata:
+    driver: local
+  colorlab_pgadmin:
+    driver: local

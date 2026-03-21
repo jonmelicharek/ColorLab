@@ -1,0 +1,16 @@
+{
+  "name": "ColorLab AI",
+  "short_name": "ColorLab",
+  "description": "AI-powered hair color formulas for professional stylists",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#FAF9F7",
+  "theme_color": "#3D2E1F",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    }
+  ]
+}

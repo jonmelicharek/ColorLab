@@ -1,0 +1,20 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(find \"/c/Users/jonme/OneDrive/Desktop/colorlab/{app\" -type f)",
+      "Bash(npm install:*)",
+      "Bash(export PATH=\"$PATH:/c/Program Files/nodejs:/c/Users/jonme/AppData/Roaming/npm\")",
+      "Bash(npx prisma:*)",
+      "Bash(export DATABASE_URL=\"file:./dev.db\")",
+      "Bash(npx next:*)",
+      "Bash(git init:*)",
+      "Bash(git add:*)",
+      "Bash(git rm:*)",
+      "Bash(git commit:*)",
+      "Bash(git config:*)",
+      "Bash(git branch:*)",
+      "Bash(git remote:*)",
+      "Bash(git push:*)"
+    ]
+  }
+}

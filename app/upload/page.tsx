@@ -15,9 +15,19 @@ import { cn, fileToBase64, getMediaType, levelToDescription, difficultyColor } f
 type Step = 'upload' | 'analyzing' | 'results';
 
 interface AnalysisResult {
-  clientAnalysis: any;
-  inspoAnalysis: any;
-  recommendation: any;
+  clientAnalysis: Record<string, any>;
+  inspoAnalysis: Record<string, any>;
+  recommendation: {
+    summary: string;
+    technique: string;
+    steps: string[];
+    formula: Record<string, any>;
+    warnings: string[];
+    tips: string[];
+    difficulty: string;
+    estimatedTime: string;
+    estimatedPrice: string;
+  };
   matchedEntries: any[];
   confidence: number;
 }
@@ -344,7 +354,7 @@ export default function UploadPage() {
                 {expandedSections.formula && (
                   <div className="px-6 pb-6">
                     <div className="grid sm:grid-cols-2 gap-4">
-                      {Object.entries(result.recommendation.formula as Record<string, any>).map(([key, value]) => {
+                      {Object.entries(result.recommendation.formula).map(([key, value]) => {
                         if (!value || key === 'processingTimes' || (Array.isArray(value) && value.length === 0)) return null;
                         const label = key.replace(/([A-Z])/g, ' $1').replace(/^./, s => s.toUpperCase());
                         return (
@@ -360,12 +370,12 @@ export default function UploadPage() {
                         <div className="bg-cream/50 rounded-lg p-3 sm:col-span-2">
                           <p className="text-xs text-stone uppercase tracking-wider mb-1">Processing Times</p>
                           <div className="flex flex-wrap gap-3">
-                            {Object.entries(result.recommendation.formula.processingTimes as Record<string, string>).map(([k, v]) => (
+                            {(Object.entries(result.recommendation.formula.processingTimes) as [string, string][]).map(([k, v]) => (
                               v && (
                                 <span key={k} className="text-sm flex items-center gap-1.5">
                                   <Clock className="w-3 h-3 text-caramel" />
                                   <span className="text-stone capitalize">{k}:</span>
-                                  <span className="text-espresso font-medium">{String(v)}</span>
+                                  <span className="text-espresso font-medium">{v}</span>
                                 </span>
                               )
                             ))}

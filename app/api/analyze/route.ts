@@ -28,7 +28,7 @@ export async function POST(req: NextRequest) {
     try {
       const submission = await prisma.submission.create({
         data: {
-          clientImageUrl: `data:${clientMediaType};base64,${clientImage.slice(0, 100)}...`,
+          clientImageUrl: `data:${clientMediaType};base64,${clientImage.slice(0, 100)}...`, // Store reference, not full base64
           inspoImageUrl: `data:${inspoMediaType};base64,${inspoImage.slice(0, 100)}...`,
           clientHairInfo: result.clientAnalysis as any,
           inspoHairInfo: result.inspoAnalysis as any,
