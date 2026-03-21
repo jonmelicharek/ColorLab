@@ -34,12 +34,12 @@ export async function POST(req: NextRequest) {
 
     const entry = await prisma.formulaEntry.create({
       data: {
-        beforeImageUrl: body.beforeImageUrl,
+        beforeImageUrl: body.beforeImageUrl || '',
         beforeHairColor: body.beforeHairColor,
         beforeHairType: body.beforeHairType || null,
         beforeCondition: body.beforeCondition || null,
         beforeLevel: body.beforeLevel ? parseInt(body.beforeLevel) : null,
-        afterImageUrl: body.afterImageUrl,
+        afterImageUrl: body.afterImageUrl || '',
         afterHairColor: body.afterHairColor,
         afterLevel: body.afterLevel ? parseInt(body.afterLevel) : null,
         technique: body.technique,
