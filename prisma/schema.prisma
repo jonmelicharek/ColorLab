@@ -218,6 +218,24 @@ model SavedFormula {
   @@index([clientId])
 }
 
+// ─── ANONYMOUS USAGE TRACKING ──────────────────────────────
+
+model AnonymousUsage {
+  id              String   @id @default(cuid())
+  createdAt       DateTime @default(now())
+
+  // Tracking keys
+  ipAddress       String
+  deviceId        String   @unique  // httpOnly cookie value
+
+  // Usage
+  analysesUsed    Int      @default(0)
+  monthlyResetAt  DateTime?
+
+  @@index([ipAddress])
+  @@index([deviceId])
+}
+
 // ─── LEAD GEN & WAITLIST ────────────────────────────────────
 
 model Lead {

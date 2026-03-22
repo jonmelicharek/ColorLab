@@ -1053,9 +1053,9 @@ export default function HomePage() {
             className="grid md:grid-cols-3 gap-8 text-left"
           >
             {[
-              { quote: "This is the app I've been looking for, and the client portal is extremely helpful.", name: 'Marissa M.', role: 'Stylist' },
-              { quote: "The database matching is insanely accurate. It matched my balayage technique perfectly.", name: 'Alyssa N.', role: 'Stylist' },
-              { quote: "My assistants can now prep formula cards before the client even sits down.", name: 'Simone H.', role: 'Stylist' },
+              { quote: "This is the app I've been looking for, and the client portal is extremely helpful.", name: 'Marissa M.', role: 'Stylist', stars: 5 },
+              { quote: "The database matching is insanely accurate. It matched my balayage technique perfectly.", name: 'Alyssa N.', role: 'Stylist', stars: 5 },
+              { quote: "My assistants can now prep formula cards before the client even sits down.", name: 'Simone H.', role: 'Stylist', stars: 5 },
             ].map((t, i) => (
               <motion.div
                 key={i}

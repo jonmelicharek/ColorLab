@@ -40,18 +40,6 @@ interface AnalysisResult {
 }
 
 const FREE_ANALYSIS_LIMIT = 3;
-const STORAGE_KEY = 'colorlab_analyses_used';
-
-function getLocalAnalysesUsed(): number {
-  if (typeof window === 'undefined') return 0;
-  return parseInt(localStorage.getItem(STORAGE_KEY) || '0', 10);
-}
-
-function incrementLocalAnalyses(): number {
-  const current = getLocalAnalysesUsed() + 1;
-  localStorage.setItem(STORAGE_KEY, String(current));
-  return current;
-}
 
 interface AuthUser {
   id: string;
@@ -84,14 +72,17 @@ export default function UploadPage() {
       .then(data => {
         if (data.user) {
           setUser(data.user);
-          setAnalysesUsed(data.user.freeAnalysesUsed);
-        } else {
-          setAnalysesUsed(getLocalAnalysesUsed());
         }
       })
-      .catch(() => {
-        setAnalysesUsed(getLocalAnalysesUsed());
-      });
+      .catch(() => {});
+
+    // Check usage server-side (works for both anonymous and logged-in)
+    fetch('/api/usage')
+      .then(r => r.json())
+      .then(data => {
+        setAnalysesUsed(data.used || 0);
+      })
+      .catch(() => {});
 
     // Check for checkout success
     const params = new URLSearchParams(window.location.search);
@@ -173,23 +164,23 @@ export default function UploadPage() {
         }),
       });
 
+      if (res.status === 403) {
+        // Server says limit reached
+        setStep('paywall');
+        return;
+      }
+
       if (!res.ok) throw new Error('Analysis failed. Please try again.');
 
       const data = await res.json();
       setResult(data);
 
-      // Track usage
-      if (user) {
-        // Server-side tracking for logged-in users
-        await fetch('/api/stripe/usage', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email: user.email }),
-        });
+      // Usage is tracked server-side now — update local display from response
+      if (data.usage) {
+        setAnalysesUsed(data.usage.used);
       } else {
-        incrementLocalAnalyses();
+        setAnalysesUsed(prev => prev + 1);
       }
-      setAnalysesUsed(prev => prev + 1);
       setStep('results');
     } catch (err: any) {
       setError(err.message || 'Something went wrong.');
