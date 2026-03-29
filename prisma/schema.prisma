@@ -236,6 +236,35 @@ model AnonymousUsage {
   @@index([deviceId])
 }
 
+// ─── SOCIAL MEDIA POSTS ─────────────────────────────────────
+
+model SocialPost {
+  id              String   @id @default(cuid())
+  createdAt       DateTime @default(now())
+
+  // Content
+  caption         String
+  imageUrl        String?
+  imagePrompt     String?  // AI description for image sourcing
+  hook            String?  // First line / scroll-stopper
+
+  // Post metadata
+  postType        String?  // tip, trend, education, promotion, engagement, etc.
+  status          String   @default("draft") // draft, scheduled, published, failed
+
+  // Instagram data
+  igMediaId       String?
+  permalink       String?
+  publishedAt     DateTime?
+
+  // Scheduling
+  scheduledFor    DateTime?
+
+  @@index([status])
+  @@index([publishedAt])
+  @@index([scheduledFor])
+}
+
 // ─── LEAD GEN & WAITLIST ────────────────────────────────────
 
 model Lead {

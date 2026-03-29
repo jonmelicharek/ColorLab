@@ -4,6 +4,15 @@
   "functions": {
     "app/api/analyze/route.ts": {
       "maxDuration": 60
+    },
+    "app/api/cron/social/route.ts": {
+      "maxDuration": 60
     }
-  }
+  },
+  "crons": [
+    {
+      "path": "/api/cron/social",
+      "schedule": "0 15 * * *"
+    }
+  ]
 }

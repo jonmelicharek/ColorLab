@@ -5,7 +5,8 @@ import { motion } from 'framer-motion';
 import {
   FlaskConical, Plus, Trash2, Edit3, Save, X, Upload,
   Database, Users, BarChart3, ChevronRight, Search,
-  Palette, ArrowRight
+  Palette, ArrowRight, Instagram, Sparkles, Send, Clock,
+  RefreshCw, Eye, Copy, CheckCircle2, AlertCircle
 } from 'lucide-react';
 
 interface FormulaEntry {
@@ -40,7 +41,14 @@ export default function AdminPage() {
   const [authenticated, setAuthenticated] = useState(false);
   const [entries, setEntries] = useState<FormulaEntry[]>([]);
   const [leads, setLeads] = useState<any[]>([]);
-  const [tab, setTab] = useState<'formulas' | 'leads' | 'stats'>('formulas');
+  const [tab, setTab] = useState<'formulas' | 'leads' | 'social' | 'stats'>('formulas');
+  const [socialPosts, setSocialPosts] = useState<any[]>([]);
+  const [generatedPost, setGeneratedPost] = useState<any>(null);
+  const [socialLoading, setSocialLoading] = useState(false);
+  const [socialPostType, setSocialPostType] = useState('');
+  const [socialContext, setSocialContext] = useState('');
+  const [imageUrlInput, setImageUrlInput] = useState('');
+  const [copiedId, setCopiedId] = useState<string | null>(null);
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState(EMPTY_FORM);
@@ -63,9 +71,73 @@ export default function AdminPage() {
           const leadsData = await leadsRes.json();
           setLeads(leadsData.leads);
         }
+        // Fetch social posts
+        const socialRes = await fetch('/api/social/post?secret=' + secret);
+        if (socialRes.ok) {
+          const socialData = await socialRes.json();
+          setSocialPosts(socialData.posts || []);
+        }
       }
     } catch {}
     setLoading(false);
+  }
+
+  async function generateSocialPost() {
+    setSocialLoading(true);
+    try {
+      const res = await fetch('/api/social/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-admin-secret': secret },
+        body: JSON.stringify({
+          ...(socialPostType ? { postType: socialPostType } : {}),
+          ...(socialContext ? { context: socialContext } : {}),
+        }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setGeneratedPost(data);
+      }
+    } catch (err: any) {
+      console.error('Generate error:', err);
+    }
+    setSocialLoading(false);
+  }
+
+  async function publishToInstagram() {
+    if (!generatedPost) return;
+    setSocialLoading(true);
+    try {
+      const res = await fetch('/api/social/post', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-admin-secret': secret },
+        body: JSON.stringify({
+          imageUrl: imageUrlInput || undefined,
+          caption: generatedPost.formattedCaption,
+        }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        // Refresh posts list
+        const socialRes = await fetch('/api/social/post?secret=' + secret);
+        if (socialRes.ok) {
+          const socialData = await socialRes.json();
+          setSocialPosts(socialData.posts || []);
+        }
+        setGeneratedPost(null);
+        setImageUrlInput('');
+      } else {
+        alert(data.error || 'Failed to publish');
+      }
+    } catch (err: any) {
+      alert(err.message);
+    }
+    setSocialLoading(false);
+  }
+
+  function copyToClipboard(text: string, id: string) {
+    navigator.clipboard.writeText(text);
+    setCopiedId(id);
+    setTimeout(() => setCopiedId(null), 2000);
   }
 
   async function saveFormula() {
@@ -193,6 +265,7 @@ export default function AdminPage() {
             {[
               { key: 'formulas' as const, icon: Database, label: 'Formulas' },
               { key: 'leads' as const, icon: Users, label: 'Leads' },
+              { key: 'social' as const, icon: Instagram, label: 'Social' },
               { key: 'stats' as const, icon: BarChart3, label: 'Stats' },
             ].map(t => (
               <button
@@ -465,6 +538,181 @@ export default function AdminPage() {
         )}
 
         {/* ─── STATS TAB ─────────────────────────── */}
+        {/* ─── SOCIAL MEDIA TAB ────────────────────── */}
+        {tab === 'social' && (
+          <div className="space-y-8">
+            {/* Generator Section */}
+            <div className="formula-card rounded-2xl p-6">
+              <div className="flex items-center gap-2 mb-4">
+                <Sparkles className="w-5 h-5 text-caramel" />
+                <h3 className="font-display text-xl font-semibold">AI Post Generator</h3>
+              </div>
+              <p className="text-stone text-sm mb-4">Generate Instagram-ready captions with AI. Pick a post type or let it auto-select based on the content calendar.</p>
+
+              <div className="grid md:grid-cols-3 gap-4 mb-4">
+                <div>
+                  <label className="text-xs text-stone uppercase tracking-wider block mb-1">Post Type (optional)</label>
+                  <select
+                    value={socialPostType}
+                    onChange={e => setSocialPostType(e.target.value)}
+                    className="w-full px-3 py-2 rounded-lg border border-sand bg-pearl/50 focus:outline-none focus:border-caramel text-sm"
+                  >
+                    <option value="">Auto (content calendar)</option>
+                    <option value="tip">Hair Color Tip</option>
+                    <option value="trend">Trending Style</option>
+                    <option value="education">Educational</option>
+                    <option value="promotion">ColorLab Feature</option>
+                    <option value="engagement">Engagement / Question</option>
+                    <option value="transformation">Transformation</option>
+                    <option value="behind-scenes">Behind the Chair</option>
+                  </select>
+                </div>
+                <div className="md:col-span-2">
+                  <label className="text-xs text-stone uppercase tracking-wider block mb-1">Context / Topic (optional)</label>
+                  <input
+                    type="text"
+                    value={socialContext}
+                    onChange={e => setSocialContext(e.target.value)}
+                    placeholder="e.g. 'spring balayage trends' or 'new feature: client portal'"
+                    className="w-full px-3 py-2 rounded-lg border border-sand bg-pearl/50 focus:outline-none focus:border-caramel text-sm"
+                  />
+                </div>
+              </div>
+
+              <button
+                onClick={generateSocialPost}
+                disabled={socialLoading}
+                className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-caramel to-copper text-white rounded-lg hover:opacity-90 transition-opacity text-sm font-medium disabled:opacity-50"
+              >
+                {socialLoading ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
+                Generate Post
+              </button>
+            </div>
+
+            {/* Generated Post Preview */}
+            {generatedPost && (
+              <div className="formula-card rounded-2xl p-6 border-2 border-caramel/30">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center gap-2">
+                    <Eye className="w-5 h-5 text-caramel" />
+                    <h3 className="font-display text-lg font-semibold">Preview</h3>
+                    <span className="px-2 py-0.5 bg-caramel/10 text-caramel rounded-full text-xs">{generatedPost.postType}</span>
+                  </div>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => copyToClipboard(generatedPost.formattedCaption, 'preview')}
+                      className="flex items-center gap-1 px-3 py-1.5 border border-sand rounded-lg text-xs hover:bg-cream transition-colors"
+                    >
+                      {copiedId === 'preview' ? <CheckCircle2 className="w-3.5 h-3.5 text-green-600" /> : <Copy className="w-3.5 h-3.5" />}
+                      {copiedId === 'preview' ? 'Copied' : 'Copy'}
+                    </button>
+                    <button
+                      onClick={generateSocialPost}
+                      disabled={socialLoading}
+                      className="flex items-center gap-1 px-3 py-1.5 border border-sand rounded-lg text-xs hover:bg-cream transition-colors"
+                    >
+                      <RefreshCw className={`w-3.5 h-3.5 ${socialLoading ? 'animate-spin' : ''}`} /> Regenerate
+                    </button>
+                  </div>
+                </div>
+
+                {/* Hook preview */}
+                <div className="mb-3 px-3 py-2 bg-amber-50 rounded-lg border border-amber-200">
+                  <div className="text-xs text-amber-700 font-medium mb-1">Scroll-stopping hook:</div>
+                  <div className="text-sm font-medium text-espresso">{generatedPost.hook}</div>
+                </div>
+
+                {/* Full caption */}
+                <div className="bg-cream/50 rounded-xl p-4 mb-4 whitespace-pre-line text-sm text-espresso leading-relaxed max-h-80 overflow-y-auto">
+                  {generatedPost.formattedCaption}
+                </div>
+
+                {/* Image prompt */}
+                <div className="mb-4 px-3 py-2 bg-blue-50 rounded-lg border border-blue-200">
+                  <div className="text-xs text-blue-700 font-medium mb-1">Suggested image:</div>
+                  <div className="text-sm text-blue-900">{generatedPost.imagePrompt}</div>
+                </div>
+
+                {/* Post time suggestion */}
+                <div className="flex items-center gap-2 text-xs text-stone mb-4">
+                  <Clock className="w-3.5 h-3.5" />
+                  Best time to post: {generatedPost.bestTimeToPost}
+                </div>
+
+                {/* Publish section */}
+                <div className="border-t border-sand pt-4">
+                  <div className="flex items-center gap-3 mb-3">
+                    <input
+                      type="text"
+                      value={imageUrlInput}
+                      onChange={e => setImageUrlInput(e.target.value)}
+                      placeholder="Image URL (publicly accessible for Instagram)"
+                      className="flex-1 px-3 py-2 rounded-lg border border-sand bg-pearl/50 focus:outline-none focus:border-caramel text-sm"
+                    />
+                    <button
+                      onClick={publishToInstagram}
+                      disabled={socialLoading || !imageUrlInput}
+                      className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-pink-500 to-purple-600 text-white rounded-lg hover:opacity-90 transition-opacity text-sm font-medium disabled:opacity-50"
+                    >
+                      {socialLoading ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+                      Post to Instagram
+                    </button>
+                  </div>
+                  <p className="text-xs text-stone">Image must be a public URL (JPEG/PNG). Upload to Vercel Blob or use any image host.</p>
+                </div>
+              </div>
+            )}
+
+            {/* Recent Posts */}
+            <div>
+              <h3 className="font-display text-xl font-semibold mb-4">Recent Posts</h3>
+              {socialPosts.length === 0 ? (
+                <div className="formula-card rounded-2xl p-8 text-center">
+                  <Instagram className="w-10 h-10 text-sand mx-auto mb-3" />
+                  <p className="text-stone text-sm">No posts yet. Generate your first AI post above!</p>
+                </div>
+              ) : (
+                <div className="grid gap-4">
+                  {socialPosts.map((post: any) => (
+                    <div key={post.id} className="formula-card rounded-xl p-4 flex items-start justify-between gap-4">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
+                            post.status === 'published' ? 'bg-green-100 text-green-700' :
+                            post.status === 'draft' ? 'bg-amber-100 text-amber-700' :
+                            post.status === 'failed' ? 'bg-red-100 text-red-700' :
+                            'bg-blue-100 text-blue-700'
+                          }`}>
+                            {post.status}
+                          </span>
+                          {post.postType && (
+                            <span className="text-xs text-stone">{post.postType}</span>
+                          )}
+                          <span className="text-xs text-stone/60">
+                            {new Date(post.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}
+                          </span>
+                        </div>
+                        <p className="text-sm text-espresso line-clamp-2 mt-1">{post.caption?.slice(0, 150)}...</p>
+                        {post.permalink && (
+                          <a href={post.permalink} target="_blank" rel="noopener noreferrer" className="text-xs text-caramel hover:underline mt-1 inline-block">
+                            View on Instagram →
+                          </a>
+                        )}
+                      </div>
+                      <button
+                        onClick={() => copyToClipboard(post.caption, post.id)}
+                        className="flex-shrink-0 p-2 hover:bg-cream rounded-lg transition-colors"
+                      >
+                        {copiedId === post.id ? <CheckCircle2 className="w-4 h-4 text-green-600" /> : <Copy className="w-4 h-4 text-stone" />}
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
         {tab === 'stats' && (
           <div className="grid md:grid-cols-3 gap-6">
             {[
