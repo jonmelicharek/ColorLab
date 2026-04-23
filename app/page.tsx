@@ -461,8 +461,8 @@ export default function HomePage() {
             <a href="#how-it-works" className="hover:text-espresso transition-colors">How It Works</a>
             <a href="#parameters" className="hover:text-espresso transition-colors">Formula Report</a>
             <a href="#ai-analysis" className="hover:text-espresso transition-colors">AI Analysis</a>
+            <Link href="/photo-guide" className="hover:text-espresso transition-colors">Photo Guide</Link>
             <Link href="/pricing" className="hover:text-espresso transition-colors">Pricing</Link>
-            <Link href="/affiliates" className="hover:text-espresso transition-colors">Affiliates</Link>
           </div>
           <div className="flex items-center gap-3">
             <Link href="/login" className="text-sm text-stone hover:text-espresso transition-colors">Sign In</Link>

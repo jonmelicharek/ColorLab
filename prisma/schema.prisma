@@ -103,7 +103,43 @@ model Analysis {
 
   rawAiResponse   Json?
 
+  // Feedback
+  feedback        FormulaFeedback?
+
   @@index([matchedEntryId])
+}
+
+// ─── FORMULA FEEDBACK (learning loop) ────────────────────────
+
+model FormulaFeedback {
+  id              String   @id @default(cuid())
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  analysisId      String   @unique
+  analysis        Analysis @relation(fields: [analysisId], references: [id])
+
+  // Core rating
+  rating          String   // worked, partial, didnt_work
+  accuracy        Int?     // 1-5 how accurate was the level/tone detection
+  formulaQuality  Int?     // 1-5 how good was the formula recommendation
+
+  // Specific feedback
+  comment         String?
+  whatWorked       String?  // What part of the formula worked well
+  whatFailed       String?  // What didn't work or needed adjustment
+  actualResult    String?  // What the actual result looked like
+  adjustmentsMade String?  // What the stylist changed from the recommendation
+
+  // After photo (optional — proves the result)
+  afterPhotoUrl   String?
+
+  // Who left it
+  stylistId       String?
+  deviceId        String?  // For anonymous users
+
+  @@index([rating])
+  @@index([stylistId])
 }
 
 // ─── STYLIST ACCOUNTS & SUBSCRIPTIONS ────────────────────────

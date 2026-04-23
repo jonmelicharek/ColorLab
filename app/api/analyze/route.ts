@@ -173,9 +173,10 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    // Save submission to database
+    // Save submission to database and capture analysis ID for feedback
+    let analysisId: string | null = null;
     try {
-      await prisma.submission.create({
+      const submission = await prisma.submission.create({
         data: {
           clientImageUrl: `data:${clientMediaType};base64,${clientImage.slice(0, 100)}...`,
           inspoImageUrl: `data:${inspoMediaType};base64,${inspoImage.slice(0, 100)}...`,
@@ -197,16 +198,18 @@ export async function POST(req: NextRequest) {
             },
           },
         },
+        include: { analysis: true },
       });
+      analysisId = submission.analysis?.id || null;
     } catch (dbError) {
       console.error('Database write error:', dbError);
     }
 
-    // Build response with remaining count
+    // Build response with remaining count + analysis ID for feedback
     const newUsed = used + 1;
     const remaining = limit === -1 ? -1 : limit - newUsed;
 
-    const response = NextResponse.json({ ...result, usage: { used: newUsed, limit, remaining } });
+    const response = NextResponse.json({ ...result, analysisId, usage: { used: newUsed, limit, remaining } });
 
     // Set device cookie for anonymous users
     if (anonymousDeviceId) {

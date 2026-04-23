@@ -8,7 +8,8 @@ import {
   Upload, Camera, Sparkles, ArrowRight, ArrowLeft, FlaskConical,
   Clock, AlertTriangle, Lightbulb, ChevronDown, ChevronUp,
   Palette, Scissors, Droplets, RotateCcw, Download, Share2,
-  CheckCircle2, Loader2, Lock, BookOpen, Crown, User, Save
+  CheckCircle2, Loader2, Lock, BookOpen, Crown, User, Save,
+  ThumbsUp, ThumbsDown, MinusCircle, MessageSquare, Star, HelpCircle
 } from 'lucide-react';
 import { cn, fileToBase64, getMediaType, levelToDescription, difficultyColor } from '@/lib/utils';
 
@@ -37,6 +38,7 @@ interface AnalysisResult {
   };
   matchedEntries: any[];
   confidence: number;
+  analysisId?: string;
 }
 
 const FREE_ANALYSIS_LIMIT = 3;
@@ -64,6 +66,17 @@ export default function UploadPage() {
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
     formula: true, technique: true, warnings: false, tips: false, why: false,
   });
+  // Feedback state
+  const [feedbackRating, setFeedbackRating] = useState<string | null>(null);
+  const [feedbackAccuracy, setFeedbackAccuracy] = useState<number>(0);
+  const [feedbackQuality, setFeedbackQuality] = useState<number>(0);
+  const [feedbackComment, setFeedbackComment] = useState('');
+  const [feedbackWhatWorked, setFeedbackWhatWorked] = useState('');
+  const [feedbackWhatFailed, setFeedbackWhatFailed] = useState('');
+  const [feedbackAdjustments, setFeedbackAdjustments] = useState('');
+  const [feedbackSubmitted, setFeedbackSubmitted] = useState(false);
+  const [feedbackLoading, setFeedbackLoading] = useState(false);
+  const [feedbackExpanded, setFeedbackExpanded] = useState(false);
 
   useEffect(() => {
     // Check auth status
@@ -188,6 +201,33 @@ export default function UploadPage() {
     }
   }
 
+  async function submitFeedback() {
+    if (!result?.analysisId || !feedbackRating) return;
+    setFeedbackLoading(true);
+    try {
+      const res = await fetch('/api/feedback', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          analysisId: result.analysisId,
+          rating: feedbackRating,
+          accuracy: feedbackAccuracy || null,
+          formulaQuality: feedbackQuality || null,
+          comment: feedbackComment || null,
+          whatWorked: feedbackWhatWorked || null,
+          whatFailed: feedbackWhatFailed || null,
+          adjustmentsMade: feedbackAdjustments || null,
+        }),
+      });
+      if (res.ok) {
+        setFeedbackSubmitted(true);
+      }
+    } catch {
+      // Silently handle
+    }
+    setFeedbackLoading(false);
+  }
+
   async function saveFormula() {
     if (!result || !user) return;
     try {
@@ -213,6 +253,16 @@ export default function UploadPage() {
     setInspoPreview('');
     setResult(null);
     setError('');
+    // Reset feedback state
+    setFeedbackRating(null);
+    setFeedbackAccuracy(0);
+    setFeedbackQuality(0);
+    setFeedbackComment('');
+    setFeedbackWhatWorked('');
+    setFeedbackWhatFailed('');
+    setFeedbackAdjustments('');
+    setFeedbackSubmitted(false);
+    setFeedbackExpanded(false);
   }
 
   function toggleSection(key: string) {
@@ -275,6 +325,12 @@ export default function UploadPage() {
               <div className="text-center mb-10">
                 <h1 className="font-display text-3xl md:text-4xl font-medium mb-2">Analyze & Formulate</h1>
                 <p className="text-stone">Upload two photos and get a complete color formula in seconds.</p>
+                <Link
+                  href="/photo-guide"
+                  className="inline-flex items-center gap-1.5 text-xs text-caramel hover:text-copper mt-2 transition-colors"
+                >
+                  <HelpCircle className="w-3.5 h-3.5" /> How to take the best photos for accurate results
+                </Link>
               </div>
 
               {error && (
@@ -758,6 +814,179 @@ export default function UploadPage() {
                   </div>
                 </div>
               )}
+
+              {/* ─── Formula Feedback ──────────────────── */}
+              <div className="formula-card rounded-2xl overflow-hidden mb-8 border-2 border-caramel/20">
+                {feedbackSubmitted ? (
+                  <div className="p-8 text-center">
+                    <div className="w-14 h-14 rounded-full bg-emerald-100 flex items-center justify-center mx-auto mb-4">
+                      <CheckCircle2 className="w-7 h-7 text-emerald-600" />
+                    </div>
+                    <h3 className="font-display text-xl font-semibold mb-2">Thanks for your feedback!</h3>
+                    <p className="text-stone text-sm max-w-md mx-auto">
+                      Your rating helps improve formulas for every stylist. The AI gets smarter with every review.
+                    </p>
+                  </div>
+                ) : (
+                  <>
+                    <button
+                      onClick={() => setFeedbackExpanded(!feedbackExpanded)}
+                      className="w-full flex items-center justify-between p-6 hover:bg-cream/50 transition-colors"
+                    >
+                      <h3 className="font-display text-xl font-semibold flex items-center gap-2">
+                        <MessageSquare className="w-5 h-5 text-caramel" /> Rate This Formula
+                      </h3>
+                      {feedbackExpanded ? <ChevronUp className="w-5 h-5 text-clay" /> : <ChevronDown className="w-5 h-5 text-clay" />}
+                    </button>
+
+                    {feedbackExpanded && (
+                      <div className="px-6 pb-6 space-y-5">
+                        <p className="text-stone text-sm">
+                          Did this formula work? Your feedback trains the AI to give better recommendations.
+                        </p>
+
+                        {/* Main rating buttons */}
+                        <div>
+                          <label className="text-xs text-stone uppercase tracking-wider block mb-2">How did it turn out?</label>
+                          <div className="grid grid-cols-3 gap-3">
+                            {[
+                              { value: 'worked', label: 'Worked Great', icon: ThumbsUp, color: 'emerald' },
+                              { value: 'partial', label: 'Partially Worked', icon: MinusCircle, color: 'amber' },
+                              { value: 'didnt_work', label: "Didn't Work", icon: ThumbsDown, color: 'red' },
+                            ].map(opt => (
+                              <button
+                                key={opt.value}
+                                onClick={() => setFeedbackRating(opt.value)}
+                                className={`p-4 rounded-xl border-2 transition-all text-center ${
+                                  feedbackRating === opt.value
+                                    ? opt.color === 'emerald' ? 'border-emerald-500 bg-emerald-50' :
+                                      opt.color === 'amber' ? 'border-amber-500 bg-amber-50' :
+                                      'border-red-500 bg-red-50'
+                                    : 'border-sand hover:border-clay'
+                                }`}
+                              >
+                                <opt.icon className={`w-6 h-6 mx-auto mb-1.5 ${
+                                  feedbackRating === opt.value
+                                    ? opt.color === 'emerald' ? 'text-emerald-600' :
+                                      opt.color === 'amber' ? 'text-amber-600' :
+                                      'text-red-600'
+                                    : 'text-stone'
+                                }`} />
+                                <span className="text-xs font-medium">{opt.label}</span>
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+
+                        {/* Star ratings */}
+                        {feedbackRating && (
+                          <div className="grid sm:grid-cols-2 gap-4">
+                            <div>
+                              <label className="text-xs text-stone uppercase tracking-wider block mb-2">
+                                Level & Tone Detection Accuracy
+                              </label>
+                              <div className="flex gap-1">
+                                {[1, 2, 3, 4, 5].map(n => (
+                                  <button
+                                    key={n}
+                                    onClick={() => setFeedbackAccuracy(n)}
+                                    className="p-1 transition-colors"
+                                  >
+                                    <Star className={`w-6 h-6 ${n <= feedbackAccuracy ? 'fill-honey text-honey' : 'text-sand'}`} />
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
+                            <div>
+                              <label className="text-xs text-stone uppercase tracking-wider block mb-2">
+                                Formula Recommendation Quality
+                              </label>
+                              <div className="flex gap-1">
+                                {[1, 2, 3, 4, 5].map(n => (
+                                  <button
+                                    key={n}
+                                    onClick={() => setFeedbackQuality(n)}
+                                    className="p-1 transition-colors"
+                                  >
+                                    <Star className={`w-6 h-6 ${n <= feedbackQuality ? 'fill-honey text-honey' : 'text-sand'}`} />
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Detailed feedback (collapsed until rating selected) */}
+                        {feedbackRating && (
+                          <div className="space-y-3">
+                            {(feedbackRating === 'worked' || feedbackRating === 'partial') && (
+                              <div>
+                                <label className="text-xs text-stone uppercase tracking-wider block mb-1">What worked well?</label>
+                                <input
+                                  type="text"
+                                  value={feedbackWhatWorked}
+                                  onChange={e => setFeedbackWhatWorked(e.target.value)}
+                                  placeholder="e.g. Toner shade was spot-on, technique was perfect"
+                                  className="w-full px-3 py-2 rounded-lg border border-sand bg-pearl/50 focus:outline-none focus:border-caramel text-sm"
+                                />
+                              </div>
+                            )}
+
+                            {(feedbackRating === 'partial' || feedbackRating === 'didnt_work') && (
+                              <>
+                                <div>
+                                  <label className="text-xs text-stone uppercase tracking-wider block mb-1">What didn&apos;t work?</label>
+                                  <input
+                                    type="text"
+                                    value={feedbackWhatFailed}
+                                    onChange={e => setFeedbackWhatFailed(e.target.value)}
+                                    placeholder="e.g. Ends came out too warm, developer was too strong"
+                                    className="w-full px-3 py-2 rounded-lg border border-sand bg-pearl/50 focus:outline-none focus:border-caramel text-sm"
+                                  />
+                                </div>
+                                <div>
+                                  <label className="text-xs text-stone uppercase tracking-wider block mb-1">What did you adjust?</label>
+                                  <input
+                                    type="text"
+                                    value={feedbackAdjustments}
+                                    onChange={e => setFeedbackAdjustments(e.target.value)}
+                                    placeholder="e.g. Dropped developer to 10vol, added violet additive"
+                                    className="w-full px-3 py-2 rounded-lg border border-sand bg-pearl/50 focus:outline-none focus:border-caramel text-sm"
+                                  />
+                                </div>
+                              </>
+                            )}
+
+                            <div>
+                              <label className="text-xs text-stone uppercase tracking-wider block mb-1">Additional notes (optional)</label>
+                              <textarea
+                                value={feedbackComment}
+                                onChange={e => setFeedbackComment(e.target.value)}
+                                placeholder="Any other details about the result..."
+                                rows={2}
+                                className="w-full px-3 py-2 rounded-lg border border-sand bg-pearl/50 focus:outline-none focus:border-caramel text-sm resize-none"
+                              />
+                            </div>
+
+                            <button
+                              onClick={submitFeedback}
+                              disabled={feedbackLoading || !feedbackRating}
+                              className="flex items-center gap-2 px-5 py-2.5 bg-espresso text-pearl rounded-full text-sm font-medium hover:bg-ink transition-colors disabled:opacity-50"
+                            >
+                              {feedbackLoading ? (
+                                <Loader2 className="w-4 h-4 animate-spin" />
+                              ) : (
+                                <CheckCircle2 className="w-4 h-4" />
+                              )}
+                              Submit Feedback
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </>
+                )}
+              </div>
 
               {/* CTA */}
               <div className="text-center py-8 border-t border-sand">

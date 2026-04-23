@@ -84,11 +84,29 @@ export async function analyzePhotos(
   confidence: number;
 }> {
 
-  // Step 1: Pre-fetch formula database entries (runs while we build the prompt)
-  const allEntries = await prisma.formulaEntry.findMany({
-    take: 20,
-    orderBy: { createdAt: 'desc' },
-  });
+  // Step 1: Pre-fetch formula database entries + feedback learnings
+  const [allEntries, feedbackLearnings] = await Promise.all([
+    prisma.formulaEntry.findMany({
+      take: 20,
+      orderBy: { createdAt: 'desc' },
+    }),
+    // Pull feedback patterns to learn from real-world results
+    prisma.formulaFeedback.findMany({
+      where: {
+        OR: [
+          { rating: 'didnt_work' },
+          { rating: 'partial' },
+        ],
+      },
+      include: {
+        analysis: {
+          select: { technique: true, summary: true, recommendedFormula: true },
+        },
+      },
+      orderBy: { createdAt: 'desc' },
+      take: 10,
+    }),
+  ]);
 
   // Build database context string
   const databaseContext = allEntries.length > 0
@@ -97,6 +115,18 @@ Entry ${i + 1}: Before: ${e.beforeHairColor} (Level ${e.beforeLevel}) -> After: 
   Technique: ${e.technique} | Brand: ${e.colorBrand || 'N/A'} | Formula: ${e.formulaDetails}
   Developer: ${e.developer || 'N/A'} | Lightener: ${e.lightener || 'None'} | Toner: ${e.toner || 'None'}
   Processing: ${e.processingTime || 'N/A'} | Notes: ${e.notes || 'None'}`).join('\n')}`
+    : '';
+
+  // Build feedback learning context — teaches the AI from real results
+  const feedbackContext = feedbackLearnings.length > 0
+    ? `\n\nLEARNINGS FROM REAL-WORLD FEEDBACK — stylists have reported these issues with past recommendations. Avoid repeating these mistakes:\n${feedbackLearnings.map((fb, i) => {
+        const parts = [`Issue ${i + 1} (${fb.rating === 'didnt_work' ? 'FAILED' : 'PARTIALLY WORKED'}):`];
+        if (fb.analysis?.technique) parts.push(`Technique: ${fb.analysis.technique}`);
+        if (fb.whatFailed) parts.push(`Problem: ${fb.whatFailed}`);
+        if (fb.adjustmentsMade) parts.push(`Stylist fixed by: ${fb.adjustmentsMade}`);
+        if (fb.comment) parts.push(`Note: ${fb.comment}`);
+        return parts.join(' | ');
+      }).join('\n')}`
     : '';
 
   // Step 2: Single comprehensive API call with both images
@@ -183,7 +213,7 @@ CRITICAL PROFESSIONAL RULES — you MUST follow these:
 - Processing times should account for hair porosity — high porosity processes faster.
 - Be specific with product names, shade numbers, ratios, and timing.
 - The rootFormula, midFormula, and endFormula should reflect what is being applied to each zone. If a zone is left untouched, say "Leave natural" or null — do NOT apply a darker formula to that zone unless darkening is the intent.
-${databaseContext}`
+${databaseContext}${feedbackContext}`
           },
         ],
       },
